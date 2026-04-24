@@ -545,7 +545,7 @@ function updateCnt(el,id,max){
 function initSig(){
   if(sigCtx)return;
   const cv=document.getElementById('sigC');
-  sigCtx=cv.getContext('2d');sigCtx.strokeStyle='#1d1d1f';sigCtx.lineWidth=3;sigCtx.lineCap='round';sigCtx.lineJoin='round';
+  sigCtx=cv.getContext('2d');sigCtx.strokeStyle='#1d1d1f';sigCtx.lineWidth=6;sigCtx.lineCap='round';sigCtx.lineJoin='round';
   function pos(e){const r=cv.getBoundingClientRect(),sx=cv.width/r.width,sy=cv.height/r.height;const src=e.touches?e.touches[0]:e;return{x:(src.clientX-r.left)*sx,y:(src.clientY-r.top)*sy};}
   function dn(e){e.preventDefault();drawing=true;const p=pos(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);}
   function mv(e){e.preventDefault();if(!drawing)return;const p=pos(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();hasSig=true;document.getElementById('hasSigTag').style.display='inline';}
