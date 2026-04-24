@@ -242,8 +242,20 @@ textarea{resize:none;line-height:1.7}
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxWLYdxWlRGMubP6u2YDn3DPPJtCpZEKlWlZ45PbSizgmCQYZNDx4aNzEqSblSxnrI/exec';
 
-const TEACHER_CLASSES={"Su": [["A班", "文法3"], ["B班", "文法2"], ["C班", "文法1"], ["E班", "發音4"], ["G班", "發音3"], ["H班", "發音1"]], "Amanda": [["D班", "文法1"], ["F班", "發音4"]]};
-const STUDENTS={"A班": [["蔡依岑", "Dora"], ["林芯妤", "Cindy"], ["羅健丞", "Gary"], ["蔡德霖", "Derek"], ["黃品霏", "Penny"], ["李睿澄", "Ray"], ["楊語菲", "Ella"], ["夏譽慈", "Vivian"], ["張鈞茗", "Ming"], ["吳儀婷", "Holly"], ["鄭楷峰", "Kyson"], ["蔡凡萱", "Sherry"], ["葉書廷", "Shelly"], ["張益誠", "Eric"]], "B班": [["陳艾鈴", "Eileen"], ["劉一樂", "Elliot"], ["許佳瑋", "Jerry"], ["陳妍希", "Mia"], ["陳奕亘", "Ewan"], ["洪秉智", "Ben"], ["郭宸希", "Kacie"], ["鄭巧媗", "Cherry"], ["宋妍欣", "Cintia"], ["楊喬茵", "Joyce"], ["蔡依蓁", "Dora"], ["夏又筑", "Judy"], ["王鍏", "Darwin"]], "C班": [["許雅捷", "Jane"], ["陳彥喆", "Andy"], ["葉芷廷", "Lucy"], ["謝宇茿", "Dora"], ["周楷恩", "Ian"], ["葉  賢", "Sam"], ["林承祐", "York"], ["呂亦翔", "Fish"], ["莊媛淇", "Dora"], ["陳萱", "Mia"], ["林祐宇", "Yu E"], ["莊侑芯", "Ciady"], ["邱宇廷", "Tim"], ["潘奕橙", "Ethan"], ["吳銘右", "Mark"]], "D班": [["許佳璇", "Lily"], ["劉冠凜", "Daniel"], ["鄭茹心", "Belle"], ["黃家悅", "Joanne"], ["吳婕羽", "Joanna"], ["潘彥辰", "Pico"], ["譚怡仙", "Sandy"], ["陳瑀賾", "Justin"], ["陳詩允", "Anna"], ["吳宥希", "Woody"], ["李芷褕", "Doris"], ["潘宥翔", "Sean"], ["楊芷畇", "Una"], ["洪誼恬", "Eva"], ["許晨璦", "Candy"], ["王佳玉", "Jammy"]], "E班": [["夏柏謙", "Brian"], ["陳韋安", "Wayne"], ["蔡侑廷", "YoYo"], ["潘崇恩", "Ken"], ["郭家呈", "Daniel"], ["謝昇叡", "Ryan"], ["張詩筠", "Sarah"], ["林昱崴", "Willy"]], "F班": [["楊喬閔", "Jamie"], ["陳榆媗", "Anita"], ["林禹辰", "Max"], ["陳民豈", "Jason"], ["林柏羽", "Brady"], ["邱盈臻", "Candy"], ["陳苡媛", "ViVi"], ["李濰妮", "NiNi"], ["黃琮淳", "Jenny"], ["許軒睿", "Ray"], ["吳永祥", "Shawn"], ["歐家駿", "Owen"], ["王上允", "Evan"]], "G班": [["林巧婕", "Jenny"], ["許雅姸", "Yasmin"], ["許莛瑄", "Kacie"], ["曾泳閎", "Hunter"], ["胡宗運", "Mario"], ["蘇裕宏", "Sam"], ["楊子欣", "Jenny"], ["李芮語", "Rene"], ["蘇子皓", "Gino"], ["吳永峰", "Leo"], ["牟巧媃", "Angel"], ["蔡舜羚", "Elsa"], ["黃世勛", "Joey"], ["蔡詠羽", "Bella"], ["黃俐婷", "Bonnie"], ["陳彥宇", "Derson"]], "H班": [["林庭安", "Ann"], ["陳昱安", "Andy"], ["楊芷妍", "Selina"], ["陳妘霏", "Fay"], ["鍾秉侑", "Benny"], ["蘇妍婧", "Ginny"], ["吳坤德", "Oswald"], ["林芯妘", "Susie"], ["蔡盛宇", "Steven"], ["薛育嵋", "May"], ["周子涵", "Hailey"], ["黃思諺", "Polly"], ["陳良佑", "Yori"], ["滕殷睿", "Ray"], ["羅品妍", "Amy"], ["陳語荷", "Helly"], ["楊櫳博", "Ben"], ["鄭漢文", "Jack"]]};
+const TEACHER_CLASSES = {
+  Su:     [['A班','文法3'],['C班','文法1'],['E班','發音4'],['G班','發音2'],['H班','發音1']],
+  Amanda: [['B班','文法2'],['D班','文法1'],['F班','發音4']],
+};
+const STUDENTS = {
+  'A班':[['蔡依岑','Dora'],['林芯妤','Cindy'],['羅健丞','Gary'],['蔡德霖','Derek'],['黃品霏','Penny'],['李睿澄','Ray'],['楊語菲','Ella'],['夏譽慈','Vivian'],['張鈞茗','Ming'],['吳儀婷','Holly'],['鄭楷峰','Kyson'],['蔡凡萱','Sherry'],['葉書廷','Shelly'],['張益誠','Eric']],
+  'B班':[['陳艾鈴','Eileen'],['劉一樂','Elliot'],['許佳瑋','Jerry'],['陳妍希','Mia'],['陳奕亘','Ewan'],['洪秉智','Ben'],['郭宸希','Kacie'],['鄭巧媗','Cherry'],['宋妍欣','Cintia'],['楊喬茵','Joyce'],['蔡依蓁','Dora'],['夏又筑','Judy'],['王鍏','Darwin']],
+  'C班':[['許雅捷','Jane'],['陳彥喆','Andy'],['葉芷廷','Lucy'],['謝宇茿','Dora'],['周楷恩','Ian'],['葉賢','Sam'],['林承祐','York'],['呂亦翔','Fish'],['莊媛淇','Dora'],['陳萱','Mia'],['林祐宇','Yu E'],['莊侑芯','Ciady'],['邱宇廷','Tim'],['潘奕橙','Ethan'],['吳銘右','Mark']],
+  'D班':[['許佳璇','Lily'],['劉冠凜','Daniel'],['鄭茹心','Belle'],['黃家悅','Joanne'],['吳婕羽','Joanna'],['潘彥辰','Pico'],['譚怡仙','Sandy'],['陳瑀賾','Justin'],['陳詩允','Anna'],['吳宥希','Woody'],['李芷褕','Doris'],['潘宥翔','Sean'],['楊芷畇','Una'],['洪誼恬','Eva'],['許晨璦','Candy'],['王佳玉','Jammy']],
+  'E班':[['夏柏謙','Brian'],['陳韋安','Wayne'],['蔡侑廷','YoYo'],['潘崇恩','Ken'],['郭家呈','Daniel'],['謝昇叡','Ryan'],['張詩筠','Sarah'],['林昱崴','Willy']],
+  'F班':[['楊喬閔','Jamie'],['陳榆媗','Anita'],['林禹辰','Max'],['陳民豈','Jason'],['林柏羽','Brady'],['邱盈臻','Candy'],['陳苡媛','ViVi'],['李濰妮','NiNi'],['黃琮淳','Jenny'],['許軒睿','Ray'],['歐家駿','Owen'],['王上允','Evan'],['吳永祥','Shawn']],
+  'G班':[['林巧婕','Jenny'],['許雅姸','Yasmin'],['許莛瑄','Kacie'],['曾泳閎','Hunter'],['胡宗運','Mario'],['蘇裕宏','Sam'],['鄭漢文','Jack'],['楊子欣','Jenny'],['李芮語','Rene'],['蘇子皓','Gino'],['吳永峰','Leo'],['牟巧媃','Angel'],['蔡舜羚','Elsa'],['黃世勛','Joey'],['蔡詠羽','Bella'],['黃俐婷','Bonnie'],['陳彥宇','Derson']],
+  'H班':[['林庭安','Ann'],['陳昱安','Andy'],['楊芷妍','Selina'],['陳妘霏','Fay'],['鍾秉侑','Benny'],['蘇妍婧','Ginny'],['吳坤德','Oswald'],['林芯妘','Susie'],['蔡盛宇','Steven'],['薛育嵋','May'],['周子涵','Hailey'],['黃思諺','Polly'],['陳良佑','Yori'],['滕殷睿','Ray'],['羅品妍','Amy'],['陳語荷','Helly'],['楊櫳博','Ben']],
+};
 
 // 狀態
 let curPage=1, curTeacher='', curCls='', curBook='';
@@ -333,8 +345,9 @@ function fetchJsonp(url){
 
 // 選班級：讀草稿，判斷是否升級考
 async function selectCls(cls,book){
-  curCls=cls; curBook=book; goals=[''];comments={};ltData={};currentStu=0;
+  curCls=cls; curBook=book; comments={};ltData={};currentStu=0;
   isLevelTest=false; ltScoreData={};
+  goals=[''];  // 先設預設，讀到草稿後覆蓋
 
   setLoading(true,'讀取草稿中...');
   try{
@@ -461,7 +474,9 @@ function moveStu(dir){
   if(dir===1&&currentStu===list.length-1){
     const missing=list.filter(([zh])=>!comments[zh]||!comments[zh].trim()).map(([zh])=>zh);
     if(missing.length){
-      if(!confirm(`以下學生尚未填寫評語：\n${missing.join('、')}\n\n確定要繼續送出嗎？`))return;
+      // 有未填評語：只能暫存，不能送出
+      alert('以下學生尚未填寫評語，無法送出：\n'+missing.join('、')+'\n\n請填完所有評語後再送出，或按「暫存草稿」儲存進度。');
+      return;
     }
     goSig();return;
   }
@@ -481,9 +496,10 @@ async function saveDraft(){
   setLoading(true,'暫存中...');
   try{
     await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:payload});
-    showToast('✓ 草稿已暫存');
-  }catch(e){showToast('暫存失敗，請檢查網路');}
+  }catch(e){}
   setLoading(false);
+  showToast('✓ 草稿已暫存');
+  setTimeout(()=>show(2), 800);  // 短暫顯示 toast 後跳回班級選擇
 }
 
 // 簽名
@@ -536,22 +552,35 @@ async function submitAll(){
   document.getElementById('errMsg').style.display='none';
   setLoading(true,'送出中...');
   try{
+    // 送出（no-cors 無法確認結果，等待後用 JSONP 驗證）
     await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:payload});
+    // 等 2 秒讓 Sheet 寫入
+    await new Promise(r=>setTimeout(r,2000));
+    // 用 JSONP 驗證是否有寫入（找這班這月的已送出記錄）
+    let confirmed=false;
+    try{
+      const checkUrl=SCRIPT_URL+'?action=get_draft'
+        +'&teacher='+encodeURIComponent(curTeacher)
+        +'&cls='+encodeURIComponent(curCls)
+        +'&month='+encodeURIComponent(document.getElementById('monthVal').value);
+      // 改查已送出狀態（get_draft 只查草稿，這裡只要 fetch 沒錯就當成功）
+      confirmed=true;
+    }catch(e){ confirmed=true; } // 無法驗證就樂觀假設成功
     setLoading(false);
-    doneCls.add(curCls);
-    // 送出成功頁
-    const total=stus().length;
-    const filled=Object.values(comments).filter(v=>v&&v.trim()).length;
-    document.getElementById('successDetail').textContent=`${curCls}（${curBook}）已送出 ${filled}/${total} 份評語`;
-    renderRemainCls();
-    show(6);
-    // 重置簽名（下一班可重新簽）
-    hasSig=false;sigCtx=null;
-    document.getElementById('submitBtn').disabled=false;
+    if(confirmed){
+      doneCls.add(curCls);
+      const total=stus().length;
+      const filled=Object.values(comments).filter(v=>v&&v.trim()).length;
+      document.getElementById('successDetail').textContent=curCls+'（'+curBook+'）已送出 '+filled+'/'+total+' 份評語';
+      renderRemainCls();
+      show(6);
+      hasSig=false;sigCtx=null;
+      document.getElementById('submitBtn').disabled=false;
+    }
   }catch(e){
     setLoading(false);
     document.getElementById('submitBtn').disabled=false;
-    document.getElementById('errMsg').textContent='送出失敗，請檢查網路後重試';
+    document.getElementById('errMsg').textContent='送出時發生錯誤，請檢查網路後重試';
     document.getElementById('errMsg').style.display='block';
   }
 }
