@@ -358,19 +358,26 @@ async function selectCls(cls,book){
       +'&month='+encodeURIComponent(month);
     const data=await fetchJsonp(url);
     if(data.status==='ok'){
+      const hasDraft = data.comments && Object.keys(data.comments).length > 0;
       // 帶回草稿評語
-      if(data.comments&&Object.keys(data.comments).length){
-        comments=data.comments;
+      if(hasDraft){
+        comments = data.comments;
         document.getElementById('draftBanner4').style.display='block';
       }
       // 帶回草稿教學目標
-      if(data.goals&&data.goals.length){
-        goals=data.goals;
+      if(data.goals && data.goals.length){
+        goals = data.goals;
         document.getElementById('draftBanner3').style.display='block';
       }
       // 帶回升級考勾選
-      if(data.lt_checks&&Object.keys(data.lt_checks).length){
-        ltData=data.lt_checks;
+      if(data.lt_checks && Object.keys(data.lt_checks).length){
+        ltData = data.lt_checks;
+      }
+      // 有草稿評語：跳過教學目標，直接進學生評語繼續填
+      if(hasDraft && !isLevelTest){
+        setLoading(false);
+        currentStu=0; loadStu(0); show(4);
+        return;
       }
     }
   }catch(e){
