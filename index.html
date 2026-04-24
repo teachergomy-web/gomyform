@@ -171,8 +171,8 @@ textarea{resize:none;line-height:1.7}
         </div>
       </div>
 
-      <div class="sec-label">評語（最多 230 字）</div>
-      <textarea id="commentTa" rows="5" placeholder="請填寫對這位學生的整體評語..." oninput="updateCnt(this,'cmtCnt',228)"></textarea>
+      <div class="sec-label">評語（最多 228 字）</div>
+      <textarea id="commentTa" rows="5" placeholder="請填寫對這位學生的整體評語..." oninput="updateCnt(this,'cmtCnt',456)"></textarea>
       <div class="cnt" id="cmtCnt">0 / 228 字</div>
       <div class="skip-note">可暫時跳過，完成全班後才能送出</div>
       <div class="saved-tag" id="savedTag">✓ 已暫存</div>
@@ -437,7 +437,7 @@ function loadStu(idx){
   document.getElementById('progFill').style.width=`${(idx+1)/list.length*100}%`;
   const ta=document.getElementById('commentTa');
   ta.value=comments[zh]||'';
-  updateCnt(ta,'cmtCnt',230);
+  updateCnt(ta,'cmtCnt',456);
   document.getElementById('savedTag').style.display='none';
   document.getElementById('prevBtn').disabled=idx===0;
   document.getElementById('nextBtn').textContent=idx===list.length-1?'完成，前往簽名 →':'下一位 →';
@@ -537,9 +537,15 @@ function buildSummary(){
   ].map(([k,v])=>`<div class="summary-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
 }
 
-function updateCnt(el,id,max){
-  const n=el.value.length,c=document.getElementById(id);
-  c.textContent=`${n} / ${max} 字`;c.className='cnt'+(n>max*.9?' warn':'')+(n>=max?' over':'');
+function updateCnt(el,id,maxBytes){
+  let len = 0;
+  for(let i=0; i<el.value.length; i++){
+    len += el.value.charCodeAt(i) > 255 ? 2 : 1;
+  }
+  const c = document.getElementById(id);
+  if(!c) return;
+  c.textContent = `${Math.ceil(len/2)} / ${maxBytes/2} 字`;
+  c.className = 'cnt' + (len > maxBytes * 0.9 ? ' warn' : '') + (len > maxBytes ? ' over' : '');
 }
 
 function initSig(){
