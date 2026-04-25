@@ -306,8 +306,15 @@ function initLevelTest(){
     ltBook = params.get('book') || '';
     try{
       const raw=params.get('scores');
-      if(raw) ltScoreData=JSON.parse(atob(raw));
-    }catch(e){}
+      if(raw){
+        ltScoreData=JSON.parse(atob(raw));
+        console.log('[INIT] ltScoreData keys:', Object.keys(ltScoreData));
+        const firstKey=Object.keys(ltScoreData)[0];
+        if(firstKey) console.log('[INIT] 第一個學生成績:', firstKey, ltScoreData[firstKey]);
+      } else {
+        console.log('[INIT] 無 scores 參數');
+      }
+    }catch(e){ console.log('[INIT] scores 解碼失敗:', e.message); }
     // 顯示升級考資訊，隱藏月份
     document.getElementById('monthRow').style.display='none';
     document.getElementById('ltInfoRow').style.display='block';
@@ -378,6 +385,7 @@ async function goP2(){
   if(isLevelTest && ltCls){
     // 升級考模式：直接載入學生評語
     curCls=ltCls; curBook=ltBook; comments={}; ltData={}; currentStu=0;
+    console.log('[goP2] curCls='+curCls+' ltScoreData keys='+Object.keys(ltScoreData).length);
     // 嘗試讀草稿
     setLoading(true,'讀取草稿中...');
     try{
