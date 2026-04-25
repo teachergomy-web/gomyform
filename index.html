@@ -311,12 +311,9 @@ function initLevelTest(){
         const b64 = raw.replace(/-/g,'+').replace(/_/g,'/');
         const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
         ltScoreData=JSON.parse(atob(padded));
-        const firstKey=Object.keys(ltScoreData)[0];
-        if(firstKey)
       } else {
       }
-    }catch(e){
- }
+    }catch(e){}
     // 顯示升級考資訊，隱藏月份
     document.getElementById('monthRow').style.display='none';
     document.getElementById('ltInfoRow').style.display='block';
