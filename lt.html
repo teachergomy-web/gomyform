@@ -76,20 +76,11 @@ textarea{resize:none;line-height:1.7}
   </div>
   <div class="steps" id="stepBar"></div>
 
-  <!-- P1：老師確認 -->
+  <!-- P1：班級確認 -->
   <div id="page1">
     <div class="info-box">
       <div class="cls-name" id="clsInfoName">載入中...</div>
       <div class="cls-detail" id="clsInfoDetail"></div>
-    </div>
-    <div class="card">
-      <div class="sec-label">請確認您的身份</div>
-      <label>老師</label>
-      <select id="teacherSel">
-        <option value="">請選擇...</option>
-        <option value="Su">Su 老師</option>
-        <option value="Amanda">Amanda 老師</option>
-      </select>
     </div>
     <div class="btn-row"><button class="btn primary" onclick="goP2()">開始填寫 →</button></div>
   </div>
@@ -236,10 +227,16 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'),2000);
 }
 
+// 從班級反查老師
+const TEACHER_CLASSES={
+  Su:['A班','C班','E班','G班','H班'],
+  Amanda:['B班','D班','F班'],
+};
 function goP2(){
-  const t=document.getElementById('teacherSel').value;
-  if(!t){alert('請選擇老師');return;}
-  curTeacher=t;
+  // 自動從班級反查老師
+  for(const [t, classes] of Object.entries(TEACHER_CLASSES)){
+    if(classes.includes(curCls)){curTeacher=t;break;}
+  }
   // 讀 localStorage 草稿
   const dk='draft_lt_'+curCls+'_'+curDate;
   const saved=localStorage.getItem(dk);
