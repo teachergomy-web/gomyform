@@ -107,10 +107,17 @@ textarea{resize:none;line-height:1.7}
         <option value="Su">Su 老師</option>
         <option value="Amanda">Amanda 老師</option>
       </select>
-      <div class="mt">
+      <div class="mt" id="monthRow">
         <label>月份</label>
         <div id="monthDisplay" style="font-size:15px;font-weight:600;color:#7F77DD;background:#f0f0ff;border:1.5px solid #c5c2f0;border-radius:10px;padding:.55rem .85rem"></div>
         <input type="hidden" id="monthVal">
+      </div>
+      <!-- 升級考模式顯示：班級和考試日期 -->
+      <div id="ltInfoRow" style="display:none;margin-top:.75rem">
+        <label>班級（升級考）</label>
+        <div id="ltClsDisplay" style="font-size:15px;font-weight:600;color:#7F77DD;background:#f0f0ff;border:1.5px solid #c5c2f0;border-radius:10px;padding:.55rem .85rem"></div>
+        <label style="margin-top:.5rem">考試日期</label>
+        <div id="ltDateDisplay" style="font-size:15px;color:#1d1d1f;background:#f5f5f7;border:1.5px solid #e5e5ea;border-radius:10px;padding:.55rem .85rem"></div>
       </div>
     </div>
     <div class="btn-row"><button class="btn primary" onclick="goP2()">下一步 →</button></div>
@@ -171,9 +178,9 @@ textarea{resize:none;line-height:1.7}
         </div>
       </div>
 
-      <div class="sec-label">評語（最多 228 字）</div>
-      <textarea id="commentTa" rows="5" placeholder="請填寫對這位學生的整體評語..." oninput="updateCnt(this,'cmtCnt',456)"></textarea>
-      <div class="cnt" id="cmtCnt">0 / 228 字</div>
+      <div class="sec-label">評語（最多 230 字）</div>
+      <textarea id="commentTa" rows="5" placeholder="請填寫對這位學生的整體評語..." oninput="updateCnt(this,'cmtCnt',230)"></textarea>
+      <div class="cnt" id="cmtCnt">0 / 230 字</div>
       <div class="skip-note">可暫時跳過，完成全班後才能送出</div>
       <div class="saved-tag" id="savedTag">✓ 已暫存</div>
     </div>
@@ -263,7 +270,8 @@ let curPage=1, curTeacher='', curCls='', curBook='';
 let goals=[''], comments={}, ltData={}, ltScoreData={};
 let currentStu=0, isLevelTest=false;
 let sigCtx=null, drawing=false, hasSig=false;
-let doneCls=new Set(); // 已送出的班級
+let doneCls=new Set();
+let ltCls='', ltDate='', ltBook='';  // 升級考專用
 
 // 初始化月份
 function initMonth(){
@@ -276,13 +284,34 @@ function initMonth(){
 }
 initMonth();
 
+// 升級考模式初始化
+function initLevelTest(){
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('mode')==='leveltest'){
+    isLevelTest=true;
+    ltCls  = params.get('cls')  || '';
+    ltDate = params.get('date') || '';
+    ltBook = params.get('book') || '';
+    try{
+      const raw=params.get('scores');
+      if(raw) ltScoreData=JSON.parse(atob(raw));
+    }catch(e){}
+    // 顯示升級考資訊，隱藏月份
+    document.getElementById('monthRow').style.display='none';
+    document.getElementById('ltInfoRow').style.display='block';
+    document.getElementById('ltClsDisplay').textContent=ltCls+'（'+ltBook+'）';
+    document.getElementById('ltDateDisplay').textContent=ltDate;
+  }
+}
+initLevelTest();
+
 // 步驟條
 function updateStepBar(){
   const bar=document.getElementById('stepBar');
   bar.innerHTML='';
-  const total=isLevelTest?4:5;
-  const subs=isLevelTest?['老師','班級','學生評語','簽名確認']:['老師','班級','教學目標','學生評語','簽名確認'];
-  const stepPage=isLevelTest?[1,2,4,5]:[1,2,3,4,5];
+  const total=isLevelTest?3:5;
+  const subs=isLevelTest?['老師','學生評語','簽名確認']:['老師','班級','教學目標','學生評語','簽名確認'];
+  const stepPage=isLevelTest?[1,4,5]:[1,2,3,4,5];
   const cur=stepPage.indexOf(curPage);
   for(let i=0;i<total;i++){
     const d=document.createElement('div');
@@ -290,6 +319,10 @@ function updateStepBar(){
     bar.appendChild(d);
   }
   document.getElementById('pageSubtitle').textContent=subs[Math.max(0,cur)]||'';
+  // 升級考模式：第一頁顯示班級和日期資訊
+  if(isLevelTest && ltCls){
+    document.getElementById('pageSubtitle').textContent=(curPage===1?ltCls+'升級考評語':subs[Math.max(0,cur)])||'';
+  }
 }
 
 function show(n){
@@ -310,12 +343,40 @@ function setLoading(show,text='處理中...'){
 }
 
 // P1 → P2
-function goP2(){
+async function goP2(){
   const t=document.getElementById('teacherSel').value;
   if(!t){alert('請選擇老師');return;}
   curTeacher=t;
-  renderClsList();
-  show(2);
+  if(isLevelTest && ltCls){
+    // 升級考模式：直接載入學生評語
+    curCls=ltCls; curBook=ltBook; comments={}; ltData={}; currentStu=0;
+    // 嘗試讀草稿
+    setLoading(true,'讀取草稿中...');
+    try{
+      const month=document.getElementById('monthVal').value;
+      const url=SCRIPT_URL+'?action=get_draft'
+        +'&teacher='+encodeURIComponent(curTeacher)
+        +'&cls='+encodeURIComponent(ltCls)
+        +'&month='+encodeURIComponent(month)
+        +'&date='+encodeURIComponent(ltDate);
+      const data=await fetchJsonp(url);
+      if(data.status==='ok'){
+        if(data.comments && Object.keys(data.comments).length){
+          comments=data.comments;
+          document.getElementById('draftBanner4').style.display='block';
+        }
+        if(data.lt_checks && Object.keys(data.lt_checks).length){
+          ltData=data.lt_checks;
+        }
+      }
+    }catch(e){}
+    setLoading(false);
+    loadStu(0);
+    show(4);
+  } else {
+    renderClsList();
+    show(2);
+  }
 }
 
 function renderClsList(){
@@ -437,7 +498,7 @@ function loadStu(idx){
   document.getElementById('progFill').style.width=`${(idx+1)/list.length*100}%`;
   const ta=document.getElementById('commentTa');
   ta.value=comments[zh]||'';
-  updateCnt(ta,'cmtCnt',456);
+  updateCnt(ta,'cmtCnt',230);
   document.getElementById('savedTag').style.display='none';
   document.getElementById('prevBtn').disabled=idx===0;
   document.getElementById('nextBtn').textContent=idx===list.length-1?'完成，前往簽名 →':'下一位 →';
@@ -500,9 +561,17 @@ async function saveDraft(){
   saveCur();
   const month=document.getElementById('monthVal').value;
   const payload=JSON.stringify({
-    teacher:curTeacher,month,cls:curCls,book:curBook,
-    status:'草稿',goals:isLevelTest?[]:goals,
-    comments,lt_checks:isLevelTest?ltData:{},sig:''
+    teacher: curTeacher,
+    month:   month,
+    cls:     curCls,
+    book:    curBook,
+    date:    isLevelTest ? ltDate : '',
+    mode:    isLevelTest ? 'leveltest' : 'monthly',
+    status:  '草稿',
+    goals:   isLevelTest ? [] : goals,
+    comments,
+    lt_checks: isLevelTest ? ltData : {},
+    sig:     ''
   });
   setLoading(true,'暫存中...');
   try{
@@ -529,29 +598,32 @@ function buildSummary(){
   const month=document.getElementById('monthDisplay').textContent;
   const total=stus().length;
   const filled=Object.values(comments).filter(v=>v&&v.trim()).length;
-  document.getElementById('summaryRows').innerHTML=[
-    ['老師',curTeacher+' 老師'],['月份',month],
-    ['班級',`${curCls}（${curBook}）`],
-    ...(!isLevelTest?[['教學目標',goals.length+' 項']]:[] ),
-    ['已填評語',`${filled} / ${total} 位`],
-  ].map(([k,v])=>`<div class="summary-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+  const rows=isLevelTest?[
+    ['老師',curTeacher+' 老師'],
+    ['班級',curCls+'（'+curBook+'）'],
+    ['考試日期',ltDate],
+    ['已填評語',filled+' / '+total+' 位'],
+  ]:[
+    ['老師',curTeacher+' 老師'],
+    ['月份',month],
+    ['班級',curCls+'（'+curBook+'）'],
+    ['教學目標',goals.length+' 項'],
+    ['已填評語',filled+' / '+total+' 位'],
+  ];
+  document.getElementById('summaryRows').innerHTML=rows
+    .map(([k,v])=>'<div class="summary-row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>')
+    .join('');
 }
 
-function updateCnt(el,id,maxBytes){
-  let len = 0;
-  for(let i=0; i<el.value.length; i++){
-    len += el.value.charCodeAt(i) > 255 ? 2 : 1;
-  }
-  const c = document.getElementById(id);
-  if(!c) return;
-  c.textContent = `${Math.ceil(len/2)} / ${maxBytes/2} 字`;
-  c.className = 'cnt' + (len > maxBytes * 0.9 ? ' warn' : '') + (len > maxBytes ? ' over' : '');
+function updateCnt(el,id,max){
+  const n=el.value.length,c=document.getElementById(id);
+  c.textContent=`${n} / ${max} 字`;c.className='cnt'+(n>max*.9?' warn':'')+(n>=max?' over':'');
 }
 
 function initSig(){
   if(sigCtx)return;
   const cv=document.getElementById('sigC');
-  sigCtx=cv.getContext('2d');sigCtx.strokeStyle='#1d1d1f';sigCtx.lineWidth=6;sigCtx.lineCap='round';sigCtx.lineJoin='round';
+  sigCtx=cv.getContext('2d');sigCtx.strokeStyle='#1d1d1f';sigCtx.lineWidth=3;sigCtx.lineCap='round';sigCtx.lineJoin='round';
   function pos(e){const r=cv.getBoundingClientRect(),sx=cv.width/r.width,sy=cv.height/r.height;const src=e.touches?e.touches[0]:e;return{x:(src.clientX-r.left)*sx,y:(src.clientY-r.top)*sy};}
   function dn(e){e.preventDefault();drawing=true;const p=pos(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);}
   function mv(e){e.preventDefault();if(!drawing)return;const p=pos(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();hasSig=true;document.getElementById('hasSigTag').style.display='inline';}
@@ -567,9 +639,17 @@ async function submitAll(){
   const month=document.getElementById('monthVal').value;
   const sigData=document.getElementById('sigC').toDataURL('image/png');
   const payload=JSON.stringify({
-    teacher:curTeacher,month,cls:curCls,book:curBook,
-    status:'已送出',goals:isLevelTest?[]:goals,
-    comments,lt_checks:isLevelTest?ltData:{},sig:sigData
+    teacher:  curTeacher,
+    month:    month,
+    cls:      curCls,
+    book:     curBook,
+    date:     isLevelTest ? ltDate : '',
+    mode:     isLevelTest ? 'leveltest' : 'monthly',
+    status:   '已送出',
+    goals:    isLevelTest ? [] : goals,
+    comments,
+    lt_checks: isLevelTest ? ltData : {},
+    sig:      sigData
   });
   document.getElementById('submitBtn').disabled=true;
   document.getElementById('errMsg').style.display='none';
