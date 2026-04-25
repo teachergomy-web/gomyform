@@ -321,8 +321,8 @@ function moveStu(dir){
 function saveDraft(){
   saveCur();
   localStorage.setItem('draft_lt_'+curCls+'_'+curDate,JSON.stringify({comments,ltData}));
-  showToast('✓ 草稿已暫存');
-  setTimeout(()=>show(1),800);
+  alert('✓ 草稿已暫存\n\n注意：草稿僅儲存在此裝置，\n換裝置或清除瀏覽器資料將會遺失。');
+  show(1);
 }
 
 function goSig(){buildSummary();show(3);initSig();}

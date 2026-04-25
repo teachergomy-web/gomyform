@@ -344,8 +344,8 @@ function saveDraft(){
   const month=document.getElementById('monthVal').value;
   const dk='draft_monthly_'+curTeacher+'_'+curCls+'_'+month;
   localStorage.setItem(dk,JSON.stringify({comments,goals}));
-  showToast('✓ 草稿已暫存');
-  setTimeout(()=>show(2),800);
+  alert('✓ 草稿已暫存\n\n注意：草稿僅儲存在此裝置，\n換裝置或清除瀏覽器資料將會遺失。');
+  show(2);
 }
 
 function goSig(){buildSummary();show(5);initSig();}
