@@ -114,8 +114,8 @@ textarea{resize:none;line-height:1.7}
       </div>
 
       <div class="sec-label">評語（最多 228 字）</div>
-      <textarea id="commentTa" rows="4" placeholder="請填寫對這位學生的整體評語..." oninput="updateCnt(this,'cmtCnt',228)"></textarea>
-      <div class="cnt" id="cmtCnt">0 / 228 字</div>
+      <textarea id="commentTa" rows="4" placeholder="請填寫對這位學生的整體評語..." oninput="updateCnt(this,'cmtCnt',196,98)"></textarea>
+      <div class="cnt" id="cmtCnt">0 / 196 全形</div>
       <div class="skip-note">可暫時跳過，送出前需全部填寫</div>
       <div class="saved-tag" id="savedTag">✓ 已暫存</div>
     </div>
@@ -336,9 +336,29 @@ function buildSummary(){
   ].map(([k,v])=>`<div class="summary-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
 }
 
-function updateCnt(el,id,max){
-  const n=el.value.length,c=document.getElementById(id);
-  c.textContent=`${n} / ${max} 字`;c.className='cnt'+(n>max*.9?' warn':'')+(n>=max?' over':'');
+function updateCnt(el,id,maxFull,maxHalf){
+  const val=el.value;
+  // 計算全形字數（半形算0.5個）
+  let count=0;
+  for(const ch of val){ count += /[\u0000-\u00FF]/.test(ch) ? 0.5 : 1; }
+  const max=maxFull||228;
+  const c=document.getElementById(id);
+  if(maxHalf){
+    c.textContent=`${count.toFixed(1)} / ${max} 全形（半形算半格）`;
+  } else {
+    c.textContent=`${Math.ceil(count)} / ${max} 字`;
+  }
+  c.className='cnt'+(count>max*0.9?' warn':'')+(count>=max?' over':'');
+  // 超過限制時截斷
+  if(count>max){
+    // 找截斷點
+    let total=0, cutIdx=0;
+    for(let i=0;i<val.length;i++){
+      total += /[\u0000-\u00FF]/.test(val[i]) ? 0.5 : 1;
+      if(total>max){cutIdx=i;break;}
+    }
+    el.value=val.substring(0,cutIdx);
+  }
 }
 
 function initSig(){
