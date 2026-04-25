@@ -552,6 +552,8 @@ function loadStu(idx){
     if(ld.result){const el=document.querySelector(`input[name=ltResult][value="${ld.result}"]`);if(el)el.checked=true;}
     // 分數
     const scores=ltScoreData[zh]||{};
+    console.log('[DEBUG] zh='+zh+' ltScoreData=', JSON.stringify(ltScoreData).substring(0,200));
+    console.log('[DEBUG] scores=', JSON.stringify(scores));
     const sd=document.getElementById('ltScores');
     sd.innerHTML=Object.keys(scores).length
       ?Object.entries(scores).map(([k,v])=>{
