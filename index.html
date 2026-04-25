@@ -307,14 +307,16 @@ function initLevelTest(){
     try{
       const raw=params.get('scores');
       if(raw){
-        ltScoreData=JSON.parse(atob(raw));
-        console.log('[INIT] ltScoreData keys:', Object.keys(ltScoreData));
+        // URL-safe base64 還原（- → +，_ → /，補 = padding）
+        const b64 = raw.replace(/-/g,'+').replace(/_/g,'/');
+        const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+        ltScoreData=JSON.parse(atob(padded));
         const firstKey=Object.keys(ltScoreData)[0];
-        if(firstKey) console.log('[INIT] 第一個學生成績:', firstKey, ltScoreData[firstKey]);
+        if(firstKey)
       } else {
-        console.log('[INIT] 無 scores 參數');
       }
-    }catch(e){ console.log('[INIT] scores 解碼失敗:', e.message); }
+    }catch(e){
+ }
     // 顯示升級考資訊，隱藏月份
     document.getElementById('monthRow').style.display='none';
     document.getElementById('ltInfoRow').style.display='block';
@@ -385,7 +387,6 @@ async function goP2(){
   if(isLevelTest && ltCls){
     // 升級考模式：直接載入學生評語
     curCls=ltCls; curBook=ltBook; comments={}; ltData={}; currentStu=0;
-    console.log('[goP2] curCls='+curCls+' ltScoreData keys='+Object.keys(ltScoreData).length);
     // 嘗試讀草稿
     setLoading(true,'讀取草稿中...');
     try{
@@ -560,8 +561,7 @@ function loadStu(idx){
     if(ld.result){const el=document.querySelector(`input[name=ltResult][value="${ld.result}"]`);if(el)el.checked=true;}
     // 分數
     const scores=ltScoreData[zh]||{};
-    console.log('[DEBUG] zh='+zh+' ltScoreData=', JSON.stringify(ltScoreData).substring(0,200));
-    console.log('[DEBUG] scores=', JSON.stringify(scores));
+
     const sd=document.getElementById('ltScores');
     sd.innerHTML=Object.keys(scores).length
       ?Object.entries(scores).map(([k,v])=>{
