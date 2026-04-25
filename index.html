@@ -82,8 +82,6 @@ textarea{resize:none;line-height:1.7}
       <label>老師</label>
       <select id="teacherSel">
         <option value="">請選擇...</option>
-        <option value="Su">Su 老師</option>
-        <option value="Amanda">Amanda 老師</option>
       </select>
       <div class="mt">
         <label>月份</label>
@@ -130,7 +128,7 @@ textarea{resize:none;line-height:1.7}
       </div>
       <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
       <div class="sec-label">評語（最多 228 字）</div>
-      <textarea id="commentTa" rows="5" placeholder="請填寫對這位學生的整體評語..." oninput="updateCnt(this,'cmtCnt',228,114)"></textarea>
+      <textarea id="commentTa" rows="5" placeholder="請填寫對這位學生的整體評語..." oninput="updateCnt(this,'cmtCnt',228)"></textarea>
       <div class="cnt" id="cmtCnt">0 / 228 字</div>
       <div class="skip-note">可暫時跳過，送出前需全部填寫</div>
       <div class="saved-tag" id="savedTag">✓ 已暫存</div>
@@ -190,10 +188,29 @@ textarea{resize:none;line-height:1.7}
 <script>
 const SCRIPT_URL='https://script.google.com/macros/s/AKfycbzKgnCmcBH_CJcdtZx_XkZ07nvfKPc9Y-xGUn-ahgXMKcSeCVBBwZKAmjexxYsNBOW8/exec';
 
-const TEACHER_CLASSES={
-  Su:[['A班','文法3'],['C班','文法1'],['E班','發音4'],['G班','發音2'],['H班','發音1']],
-  Amanda:[['B班','文法2'],['D班','文法1'],['F班','發音4']],
-};
+// 從 URL 參數讀取老師對應班級（由系統產生）
+// 格式：{老師: [班級1, 班級2, ...]}，還需結合 STUDENTS 取套書
+let TEACHER_CLASSES_RAW = {};
+try{
+  const raw = new URLSearchParams(window.location.search).get('teachers');
+  if(raw){
+    const b64 = raw.replace(/-/g,'+').replace(/_/g,'/');
+    const padded = b64 + '='.repeat((4-b64.length%4)%4);
+    TEACHER_CLASSES_RAW = JSON.parse(atob(padded));
+  }
+}catch(e){}
+
+// 如果沒有從 URL 讀到（直接開啟），用預設值
+if(!Object.keys(TEACHER_CLASSES_RAW).length){
+  // 預設值（包含套書），實際使用時由系統產生連結
+  TEACHER_CLASSES_RAW = {
+    Su:[['A班','文法3'],['C班','文法1'],['E班','發音4'],['G班','發音2'],['H班','發音1']],
+    Amanda:[['B班','文法2'],['D班','文法1'],['F班','發音4']],
+  };
+}
+
+// 格式已是 [[班級, 套書]]，直接使用
+const TEACHER_CLASSES = TEACHER_CLASSES_RAW;
 const STUDENTS={
   'A班':[['蔡依岑','Dora'],['林芯妤','Cindy'],['羅健丞','Gary'],['蔡德霖','Derek'],['黃品霏','Penny'],['李睿澄','Ray'],['楊語菲','Ella'],['夏譽慈','Vivian'],['張鈞茗','Ming'],['吳儀婷','Holly'],['鄭楷峰','Kyson'],['蔡凡萱','Sherry'],['葉書廷','Shelly'],['張益誠','Eric']],
   'B班':[['陳艾鈴','Eileen'],['劉一樂','Elliot'],['許佳瑋','Jerry'],['陳妍希','Mia'],['陳奕亘','Ewan'],['洪秉智','Ben'],['郭宸希','Kacie'],['鄭巧媗','Cherry'],['宋妍欣','Cintia'],['楊喬茵','Joyce'],['蔡依蓁','Dora'],['夏又筑','Judy'],['王鍏','Darwin']],
@@ -220,6 +237,16 @@ function initMonth(){
   document.getElementById('monthDisplay').textContent=`${y}年 ${parseInt(mo)}月`;
 }
 initMonth();
+
+// 動態填入老師選單
+(function(){
+  const sel = document.getElementById('teacherSel');
+  Object.keys(TEACHER_CLASSES).forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t; opt.textContent = t + ' 老師';
+    sel.appendChild(opt);
+  });
+})();
 
 function updateStepBar(){
   const bar=document.getElementById('stepBar');bar.innerHTML='';

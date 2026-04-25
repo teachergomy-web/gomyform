@@ -114,8 +114,8 @@ textarea{resize:none;line-height:1.7}
       </div>
 
       <div class="sec-label">評語（最多 228 字）</div>
-      <textarea id="commentTa" rows="4" placeholder="請填寫對這位學生的整體評語..." oninput="updateCnt(this,'cmtCnt',196,98)"></textarea>
-      <div class="cnt" id="cmtCnt">0 / 196 全形</div>
+      <textarea id="commentTa" rows="4" placeholder="請填寫對這位學生的整體評語..." oninput="updateCnt(this,'cmtCnt',228)"></textarea>
+      <div class="cnt" id="cmtCnt">0 / 228 字</div>
       <div class="skip-note">可暫時跳過，送出前需全部填寫</div>
       <div class="saved-tag" id="savedTag">✓ 已暫存</div>
     </div>
@@ -194,7 +194,7 @@ curBook  = params.get('book') || '';
 curDate  = params.get('date') || '';
 curMonth = params.get('month')|| '';
 
-// 解碼成績
+// 解碼成績（URL-safe base64）
 try{
   const raw=params.get('scores');
   if(raw){
@@ -202,7 +202,7 @@ try{
     const padded=b64+'='.repeat((4-b64.length%4)%4);
     scoresData=JSON.parse(atob(padded));
   }
-}catch(e){}
+}catch(e){ console.error('scores decode error:', e.message); }
 
 // 初始化 P1 顯示
 document.getElementById('clsInfoName').textContent=curCls+'（'+curBook+'）升級考';
@@ -227,19 +227,13 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'),2000);
 }
 
-// 從班級反查老師
-const TEACHER_CLASSES={
-  Su:['A班','C班','E班','G班','H班'],
-  Amanda:['B班','D班','F班'],
-};
 function goP2(){
-  // 自動從班級反查老師
-  for(const [t, classes] of Object.entries(TEACHER_CLASSES)){
-    if(classes.includes(curCls)){curTeacher=t;break;}
-  }
-  // 讀 localStorage 草稿
+  // 從 URL 參數讀取老師（由系統產生）
+  curTeacher = params.get('teacher') || '';
+  // 先讀草稿，沒有則讀已送出的資料
   const dk='draft_lt_'+curCls+'_'+curDate;
-  const saved=localStorage.getItem(dk);
+  const sk='submitted_lt_'+curCls+'_'+curDate;
+  const saved=localStorage.getItem(dk)||localStorage.getItem(sk);
   if(saved){
     try{
       const d=JSON.parse(saved);
@@ -336,29 +330,9 @@ function buildSummary(){
   ].map(([k,v])=>`<div class="summary-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
 }
 
-function updateCnt(el,id,maxFull,maxHalf){
-  const val=el.value;
-  // 計算全形字數（半形算0.5個）
-  let count=0;
-  for(const ch of val){ count += /[\u0000-\u00FF]/.test(ch) ? 0.5 : 1; }
-  const max=maxFull||228;
-  const c=document.getElementById(id);
-  if(maxHalf){
-    c.textContent=`${count.toFixed(1)} / ${max} 全形（半形算半格）`;
-  } else {
-    c.textContent=`${Math.ceil(count)} / ${max} 字`;
-  }
-  c.className='cnt'+(count>max*0.9?' warn':'')+(count>=max?' over':'');
-  // 超過限制時截斷
-  if(count>max){
-    // 找截斷點
-    let total=0, cutIdx=0;
-    for(let i=0;i<val.length;i++){
-      total += /[\u0000-\u00FF]/.test(val[i]) ? 0.5 : 1;
-      if(total>max){cutIdx=i;break;}
-    }
-    el.value=val.substring(0,cutIdx);
-  }
+function updateCnt(el,id,max){
+  const n=el.value.length,c=document.getElementById(id);
+  c.textContent=`${n} / ${max} 字`;c.className='cnt'+(n>max*.9?' warn':'')+(n>=max?' over':'');
 }
 
 function initSig(){
@@ -385,6 +359,8 @@ async function submitAll(){
   try{
     await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:payload});
     await new Promise(r=>setTimeout(r,1500));
+    // 送出後把完整資料存到 localStorage 供重新整理後讀回
+    localStorage.setItem('submitted_lt_'+curCls+'_'+curDate, JSON.stringify({comments, ltData}));
     localStorage.removeItem('draft_lt_'+curCls+'_'+curDate);
     const total=stus().length;
     const filled=Object.values(comments).filter(v=>v&&v.trim()).length;
