@@ -101,12 +101,14 @@ textarea{resize:none;line-height:1.7}
   <div id="page1">
     <div class="card">
       <div class="sec-label">基本資訊</div>
-      <label>老師</label>
-      <select id="teacherSel">
-        <option value="">請選擇...</option>
-        <option value="Su">Su 老師</option>
-        <option value="Amanda">Amanda 老師</option>
-      </select>
+      <div id="teacherRow">
+        <label>老師</label>
+        <select id="teacherSel">
+          <option value="">請選擇...</option>
+          <option value="Su">Su 老師</option>
+          <option value="Amanda">Amanda 老師</option>
+        </select>
+      </div>
       <div class="mt" id="monthRow">
         <label>月份</label>
         <div id="monthDisplay" style="font-size:15px;font-weight:600;color:#7F77DD;background:#f0f0ff;border:1.5px solid #c5c2f0;border-radius:10px;padding:.55rem .85rem"></div>
@@ -311,10 +313,22 @@ function initLevelTest(){
     document.getElementById('ltInfoRow').style.display='block';
     document.getElementById('ltClsDisplay').textContent=ltCls+'（'+ltBook+'）';
     document.getElementById('ltDateDisplay').textContent=ltDate;
-    // 升級考不需選班級，P1按鈕改文字
+    // 升級考：隱藏老師選擇，從班級自動帶入
+    const teacherRowEl = document.getElementById('teacherRow');
+    if(teacherRowEl) teacherRowEl.style.display='none';
+    // 升級考：從班級反查老師，自動帶入
+    for(const [t, classes] of Object.entries(TEACHER_CLASSES)){
+      if(classes.some(([c])=>c===ltCls)){
+        curTeacher=t;
+        document.getElementById('teacherSel').value=t;
+        break;
+      }
+    }
+    // 隱藏老師選擇欄位，直接顯示
+    const teacherRow=document.getElementById('teacherSel').closest('.card');
+    // 不隱藏整個 card，只顯示班級資訊，P1 按鈕改文字
     const nb=document.getElementById('p1NextBtn');
-    if(nb) nb.textContent='確認後開始填寫 →';
-    // 隱藏月份選擇（升級考不需要）
+    if(nb) nb.textContent='開始填寫 →';
   }
 }
 initLevelTest();
@@ -435,15 +449,22 @@ async function selectCls(cls,book){
     const data=await fetchJsonp(url);
     if(data.status==='ok'){
       const hasDraft = data.comments && Object.keys(data.comments).length > 0;
-      // 帶回草稿評語
       if(hasDraft){
         comments = data.comments;
         document.getElementById('draftBanner4').style.display='block';
       }
-      // 帶回草稿教學目標
       if(data.goals && data.goals.length){
         goals = data.goals;
         document.getElementById('draftBanner3').style.display='block';
+      }
+      if(data.lt_checks && Object.keys(data.lt_checks||{}).length){
+        ltData = data.lt_checks;
+      }
+      // 有資料：月成績單直接進評語頁，升級考也直接進評語頁
+      if(hasDraft){
+        setLoading(false);
+        currentStu=0; loadStu(0); show(4);
+        return;
       }
       // 帶回升級考勾選
       if(data.lt_checks && Object.keys(data.lt_checks).length){
