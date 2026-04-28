@@ -255,21 +255,6 @@ function loadStu(idx){
   document.getElementById('stuProg').textContent=`${idx+1} / ${list.length}`;
   document.getElementById('progFill').style.width=`${(idx+1)/list.length*100}%`;
 
-  // 成績顯示
-  const scores=scoresData[zh]||{};
-  const sg=document.getElementById('scoreGrid');
-  const scoreItems=Object.entries(scores).filter(([k])=>!k.endsWith('_retake'));
-  if(scoreItems.length){
-    sg.innerHTML=scoreItems.map(([k,v])=>{
-      const n=parseFloat(v);const ok=!isNaN(n)&&n>=90;
-      const rt=scores[k+'_retake'];
-      const rtHtml=rt?` <span style="font-size:11px;color:#888">補:${rt}</span>`:'';
-      return `<div class="score-item"><span class="s-name">${k}</span><span class="s-val ${ok?'ok':'ng'}">${v}${rtHtml}</span></div>`;
-    }).join('');
-  } else {
-    sg.innerHTML='<div style="font-size:13px;color:#aeaeb2;padding:.3rem 0;grid-column:span 2">（無成績資料）</div>';
-  }
-
   // 勾選
   const ld=ltData[zh]||{checks:[],result:''};
   ['neat','pronounce','vocab','attitude','express'].forEach(k=>{
