@@ -95,8 +95,7 @@ textarea{resize:none;line-height:1.7}
       </div>
       <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
 
-      <div class="sec-label">升級考成績</div>
-      <div class="score-grid" id="scoreGrid"></div>
+
 
       <div class="sec-label">學習總評（可多選）</div>
       <div class="chk-group">
@@ -259,7 +258,7 @@ function loadStu(idx){
   // 成績顯示
   const scores=scoresData[zh]||{};
   const sg=document.getElementById('scoreGrid');
-  const scoreItems=Object.entries(scores).filter(([k,v])=>!k.endsWith('_retake') && v!=='');
+  const scoreItems=Object.entries(scores).filter(([k])=>!k.endsWith('_retake'));
   if(scoreItems.length){
     sg.innerHTML=scoreItems.map(([k,v])=>{
       const n=parseFloat(v);const ok=!isNaN(n)&&n>=90;
