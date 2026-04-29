@@ -196,7 +196,10 @@ try{
   if(raw){
     const b64 = raw.replace(/-/g,'+').replace(/_/g,'/');
     const padded = b64 + '='.repeat((4-b64.length%4)%4);
-    TEACHER_CLASSES_RAW = JSON.parse(atob(padded));
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+    TEACHER_CLASSES_RAW = JSON.parse(new TextDecoder().decode(bytes));
   }
 }catch(e){}
 
@@ -211,16 +214,7 @@ if(!Object.keys(TEACHER_CLASSES_RAW).length){
 
 // 格式已是 [[班級, 套書]]，直接使用
 const TEACHER_CLASSES = TEACHER_CLASSES_RAW;
-const STUDENTS={
-  'A班':[['蔡依岑','Dora'],['林芯妤','Cindy'],['羅健丞','Gary'],['蔡德霖','Derek'],['黃品霏','Penny'],['李睿澄','Ray'],['楊語菲','Ella'],['夏譽慈','Vivian'],['張鈞茗','Ming'],['吳儀婷','Holly'],['鄭楷峰','Kyson'],['蔡凡萱','Sherry'],['葉書廷','Shelly'],['張益誠','Eric']],
-  'B班':[['陳艾鈴','Eileen'],['劉一樂','Elliot'],['許佳瑋','Jerry'],['陳妍希','Mia'],['陳奕亘','Ewan'],['洪秉智','Ben'],['郭宸希','Kacie'],['鄭巧媗','Cherry'],['宋妍欣','Cintia'],['楊喬茵','Joyce'],['蔡依蓁','Dora'],['夏又筑','Judy'],['王鍏','Darwin']],
-  'C班':[['許雅捷','Jane'],['陳彥喆','Andy'],['葉芷廷','Lucy'],['謝宇茿','Dora'],['周楷恩','Ian'],['葉賢','Sam'],['林承祐','York'],['呂亦翔','Fish'],['莊媛淇','Dora'],['陳萱','Mia'],['林祐宇','Yu E'],['莊侑芯','Ciady'],['邱宇廷','Tim'],['潘奕橙','Ethan'],['吳銘右','Mark']],
-  'D班':[['許佳璇','Lily'],['劉冠凜','Daniel'],['鄭茹心','Belle'],['黃家悅','Joanne'],['吳婕羽','Joanna'],['潘彥辰','Pico'],['譚怡仙','Sandy'],['陳瑀賾','Justin'],['陳詩允','Anna'],['吳宥希','Woody'],['李芷褕','Doris'],['潘宥翔','Sean'],['楊芷畇','Una'],['洪誼恬','Eva'],['許晨璦','Candy'],['王佳玉','Jammy']],
-  'E班':[['夏柏謙','Brian'],['陳韋安','Wayne'],['蔡侑廷','YoYo'],['潘崇恩','Ken'],['郭家呈','Daniel'],['謝昇叡','Ryan'],['張詩筠','Sarah'],['林昱崴','Willy']],
-  'F班':[['楊喬閔','Jamie'],['陳榆媗','Anita'],['林禹辰','Max'],['陳民豈','Jason'],['林柏羽','Brady'],['邱盈臻','Candy'],['陳苡媛','ViVi'],['李濰妮','NiNi'],['黃琮淳','Jenny'],['許軒睿','Ray'],['歐家駿','Owen'],['王上允','Evan'],['吳永祥','Shawn']],
-  'G班':[['林巧婕','Jenny'],['許雅姸','Yasmin'],['許莛瑄','Kacie'],['曾泳閎','Hunter'],['胡宗運','Mario'],['蘇裕宏','Sam'],['鄭漢文','Jack'],['楊子欣','Jenny'],['李芮語','Rene'],['蘇子皓','Gino'],['吳永峰','Leo'],['牟巧媃','Angel'],['蔡舜羚','Elsa'],['黃世勛','Joey'],['蔡詠羽','Bella'],['黃俐婷','Bonnie'],['陳彥宇','Derson']],
-  'H班':[['林庭安','Ann'],['陳昱安','Andy'],['楊芷妍','Selina'],['陳妘霏','Fay'],['鍾秉侑','Benny'],['蘇妍婧','Ginny'],['吳坤德','Oswald'],['林芯妘','Susie'],['蔡盛宇','Steven'],['薛育嵋','May'],['周子涵','Hailey'],['黃思諺','Polly'],['陳良佑','Yori'],['滕殷睿','Ray'],['羅品妍','Amy'],['陳語荷','Helly'],['楊櫳博','Ben']],
-};
+const STUDENTS={"A班": [["蔡依岑", "Dora"], ["林芯妤", "Cindy"], ["羅健丞", "Gary"], ["蔡德霖", "Derek"], ["黃品霏", "Penny"], ["李睿澄", "Ray"], ["楊語菲", "Ella"], ["夏譽慈", "Vivian"], ["張鈞茗", "Ming"], ["吳儀婷", "Holly"], ["鄭楷峰", "Kyson"], ["蔡凡萱", "Sherry"], ["葉書廷", "Shelly"], ["張益誠", "Eric"]], "B班": [["陳艾鈴", "Eileen"], ["劉一樂", "Elliot"], ["許佳瑋", "Jerry"], ["陳妍希", "Mia"], ["陳奕亘", "Ewan"], ["洪秉智", "Ben"], ["郭宸希", "Kacie"], ["鄭巧媗", "Cherry"], ["宋妍欣", "Cintia"], ["楊喬茵", "Joyce"], ["蔡依蓁", "Dora"], ["夏又筑", "Judy"], ["王鍏", "Darwin"]], "C班": [["許雅捷", "Jane"], ["陳彥喆", "Andy"], ["葉芷廷", "Lucy"], ["謝宇茿", "Dora"], ["周楷恩", "Ian"], ["葉  賢", "Sam"], ["林承祐", "York"], ["呂亦翔", "Fish"], ["莊媛淇", "Dora"], ["陳萱", "Mia"], ["林祐宇", "Yu E"], ["莊侑芯", "Ciady"], ["邱宇廷", "Tim"], ["潘奕橙", "Ethan"], ["吳銘右", "Mark"]], "D班": [["許佳璇", "Lily"], ["劉冠凜", "Daniel"], ["鄭茹心", "Belle"], ["黃家悅", "Joanne"], ["吳婕羽", "Joanna"], ["潘彥辰", "Pico"], ["譚怡仙", "Sandy"], ["陳瑀賾", "Justin"], ["陳詩允", "Anna"], ["吳宥希", "Woody"], ["李芷褕", "Doris"], ["潘宥翔", "Sean"], ["楊芷畇", "Una"], ["洪誼恬", "Eva"], ["許晨璦", "Candy"], ["王佳玉", "Jammy"]], "E班": [["夏柏謙", "Brian"], ["陳韋安", "Wayne"], ["蔡侑廷", "YoYo"], ["潘崇恩", "Ken"], ["郭家呈", "Daniel"], ["謝昇叡", "Ryan"], ["張詩筠", "Sarah"], ["林昱崴", "Willy"]], "F班": [["楊喬閔", "Jamie"], ["陳榆媗", "Anita"], ["林禹辰", "Max"], ["陳民豈", "Jason"], ["林柏羽", "Brady"], ["邱盈臻", "Candy"], ["陳苡媛", "ViVi"], ["李濰妮", "NiNi"], ["黃琮淳", "Jenny"], ["許軒睿", "Ray"], ["吳永祥", "Shawn"], ["歐家駿", "Owen"], ["王上允", "Evan"]], "G班": [["林巧婕", "Jenny"], ["許雅姸", "Yasmin"], ["許莛瑄", "Kacie"], ["曾泳閎", "Hunter"], ["胡宗運", "Mario"], ["蘇裕宏", "Sam"], ["楊子欣", "Jenny"], ["李芮語", "Rene"], ["蘇子皓", "Gino"], ["吳永峰", "Leo"], ["牟巧媃", "Angel"], ["蔡舜羚", "Elsa"], ["黃世勛", "Joey"], ["蔡詠羽", "Bella"], ["黃俐婷", "Bonnie"], ["陳彥宇", "Derson"]], "H班": [["林庭安", "Ann"], ["陳昱安", "Andy"], ["楊芷妍", "Selina"], ["陳妘霏", "Fay"], ["鍾秉侑", "Benny"], ["蘇妍婧", "Ginny"], ["吳坤德", "Oswald"], ["林芯妘", "Susie"], ["蔡盛宇", "Steven"], ["薛育嵋", "May"], ["周子涵", "Hailey"], ["黃思諺", "Polly"], ["陳良佑", "Yori"], ["滕殷睿", "Ray"], ["羅品妍", "Amy"], ["陳語荷", "Helly"], ["楊櫳博", "Ben"], ["鄭漢文", "Jack"]]};
 
 let curPage=1,curTeacher='',curCls='',curBook='';
 let goals=[''],comments={},currentStu=0;
