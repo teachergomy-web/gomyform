@@ -142,11 +142,10 @@ def import_sheet(ws, data, year, log):
                 {"zh": zh, "en": en, "grade": ""}
             )
 
-        # 初始化月成績
-        data["monthly"][cls_name].setdefault(zh, {}).setdefault(ym, [])
-        data["monthly"][cls_name][zh][ym] = []  # 這是我們剛剛加的清空指令
-        
-        added = 0  # 👈 請確保這行「added = 0」是在清空指令的下面，且在所有 records.append 之前！
+        # 初始化月成績（清空後重寫，避免重複）
+        data["monthly"][cls_name].setdefault(zh, {})
+        data["monthly"][cls_name][zh][ym] = []
+        added = 0
         records = data["monthly"][cls_name][zh][ym]
 
         # ── 考試本 col 6-12 ──────────────────────────────────────────────────
@@ -197,7 +196,7 @@ def import_sheet(ws, data, year, log):
                 "type": "口說",
                 "date": date_str,
                 "range": rng,
-                "item": '說',
+                "item": item if item else '說',
                 "score": score,
                 "retake": '',
                 "std": 90,
@@ -227,7 +226,7 @@ def import_sheet(ws, data, year, log):
                 "type": "單字",
                 "date": date_str,
                 "range": rng,
-                "item": 'VOC',
+                "item": item if item else 'VOC',
                 "score": score,
                 "retake": retake,
                 "std": 90,

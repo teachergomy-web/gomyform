@@ -50,16 +50,18 @@ def _clean_val(v):
 
 # 💡 底層輔助：安全刪除單筆月成績紀錄
 def _delete_monthly_rec(data, cls, zh, ym, r_type, r_date, r_range, r_item):
-    def match(r):
-        return (r.get("type") == r_type and
-                r.get("date") == r_date and
-                r.get("item") == r_item and
-                r.get("range", "") == (r_range or ""))
+    try:
+        recs = data.get("monthly_records", {}).get(cls, {}).get(ym, {}).get(zh, [])
+        for i, r in enumerate(recs):
+            if r.get("type") == r_type and r.get("date") == r_date and r.get("range") == r_range and r.get("item") == r_item:
+                del recs[i]
+                return True
+    except Exception: pass
 
     try:
         recs = data.get("monthly", {}).get(cls, {}).get(zh, {}).get(ym, [])
         for i, r in enumerate(recs):
-            if match(r):
+            if r.get("type") == r_type and r.get("date") == r_date and r.get("range") == r_range and r.get("item") == r_item:
                 del recs[i]
                 return True
     except Exception: pass
@@ -180,29 +182,8 @@ class OverviewPage(tk.Frame):
                 for ym in cls_months.keys():
                     if ym: years.append(ym[:4])
             return max(years) if years else str(datetime.now().year)
-        def _latest_ym(data):
-            """找最新有資料的年月"""
-            yms = []
-            # 從 monthly 成績取
-            for cls_data in data.get("monthly", {}).values():
-                for zh_data in cls_data.values():
-                    for ym in zh_data.keys():
-                        if ym and len(ym) >= 7:
-                            yms.append(ym[:7])
-            # 從 comments 取
-            for cls_months in data.get("comments", {}).values():
-                for ym in cls_months.keys():
-                    if ym and len(ym) >= 7:
-                        yms.append(ym[:7])
-            if yms:
-                latest = max(yms)
-                return latest[:4], latest[5:7]
-            now = datetime.now()
-            return str(now.year), f"{now.month:02d}"
-
-        latest_y, latest_m = _latest_ym(self.app.data)
-        self._yr_var  = tk.StringVar(value=latest_y)
-        self._mo_var  = tk.StringVar(value=latest_m)
+        self._yr_var  = tk.StringVar(value=_latest_year(self.app.data))
+        self._mo_var  = tk.StringVar(value=f"{datetime.now().month:02d}")
         self._build()
 
     def _build(self):
@@ -536,43 +517,7 @@ class OverviewPage(tk.Frame):
             dlg.destroy()
             self._refresh_table()
 
-        def delete_col():
-            type_name = col_key[0]
-            date_name = col_key[1]
-            if not messagebox.askyesno(
-                "確認刪除",
-                f"確定要刪除「{col_key[0]} {col_key[1]}」的整欄資料？\n"
-                f"（所有學生的此欄成績都會刪除，無法復原）",
-                parent=dlg
-            ):
-                return
-            # 刪除所有學生在此 col_key 的成績
-            ym = f"{self._yr_var.get()}-{self._mo_var.get()}"
-            cls = self._cls_var.get()
-            t, d, ri_it = col_key[0], col_key[1], col_key[2]
-            # ri_it 是 "range item" 合併，需拆開
-            deleted = 0
-            for zh in dm.student_zh_list(self.app.data, cls):
-                recs = self.app.data.get("monthly", {}).get(cls, {}).get(zh, {}).get(ym, [])
-                before = len(recs)
-                recs_new = [
-                    r for r in recs
-                    if not (r.get("type") == t and
-                            r.get("date") == d and
-                            f"{r.get('range','')} {r.get('item','')}".strip() == ri_it)
-                ]
-                if len(recs_new) < before:
-                    self.app.data["monthly"][cls][zh][ym] = recs_new
-                    deleted += before - len(recs_new)
-            if deleted:
-                self.app.save()
-            dlg.destroy()
-            self._refresh_table()
-
-        btn_row = tk.Frame(dlg, bg=U.C["white"])
-        btn_row.pack(pady=10)
-        U.btn(btn_row, "儲存修改", save, size=14).pack(side="left", padx=6)
-        U.danger_btn(btn_row, "刪除整欄", delete_col, size=14).pack(side="left", padx=6)
+        U.btn(dlg, "儲存修改", save, size=14).pack(pady=10)
 
     def _refresh_table(self):
         cls = self._cls_var.get()
@@ -690,10 +635,15 @@ class OverviewPage(tk.Frame):
                         return v in ("A++", "A+", "A")
                         
                 ok = is_ok(sc) if rt == "" else is_ok(rt)
-                c_bg = U.C["ok_bg"] if ok else U.C["ng_bg"]
-                c_fg = U.C["ok_fg"] if ok else U.C["ng_fg"]
-                
-                if not ok and not is_speaking: 
+                # no_retake：強制顯示綠色（不補課）
+                if rec.get("no_retake", False):
+                    c_bg = U.C["ok_bg"]
+                    c_fg = U.C["ok_fg"]
+                else:
+                    c_bg = U.C["ok_bg"] if ok else U.C["ng_bg"]
+                    c_fg = U.C["ok_fg"] if ok else U.C["ng_fg"]
+
+                if not ok and not is_speaking and not rec.get("no_retake", False):
                     missing_list.append(f"{zh}({col_key[0]})")
 
                 f_cell.config(bg=c_bg)
@@ -746,24 +696,34 @@ class OverviewPage(tk.Frame):
             
         stdv = tk.StringVar(value=str(_fmt(def_std)))
         is_speaking = (col_key[0] == "口說")
-        
+        no_retake_v = tk.BooleanVar(value=bool(rec.get("no_retake", False)))
+
         r1 = tk.Frame(f)
         r1.pack(fill="x", pady=5)
         tk.Label(r1, text="成績：", font=U.FM, width=8).pack(side="left")
         tk.Entry(r1, textvariable=sv, font=U.FM, width=10, justify="center").pack(side="left")
-        
+
         if not is_speaking:
-            # 補考欄位 (維持可編輯)
+            # 補考欄位
             r_rt = tk.Frame(f)
             r_rt.pack(fill="x", pady=5)
             tk.Label(r_rt, text="補考：", font=U.FM, width=8).pack(side="left")
             tk.Entry(r_rt, textvariable=rv, font=U.FM, width=10, justify="center").pack(side="left")
-            
-            # 標準分欄位 (加入 state="readonly" 設為唯讀)
+
+            # 標準分欄位
             r_std = tk.Frame(f)
             r_std.pack(fill="x", pady=5)
             tk.Label(r_std, text="標準分：", font=U.FM, width=8).pack(side="left")
             tk.Entry(r_std, textvariable=stdv, font=U.FM, width=10, justify="center", state="readonly").pack(side="left")
+
+            # 不補課勾選
+            r_nr = tk.Frame(f)
+            r_nr.pack(fill="x", pady=5)
+            tk.Checkbutton(r_nr, text="不補課（此筆不列入補考名單）",
+                           variable=no_retake_v, font=U.FM,
+                           bg=U.C["white"], activebackground=U.C["white"],
+                           fg="#27AE60", selectcolor=U.C["white"],
+                           cursor="hand2").pack(side="left")
 
         def save():
             try:
@@ -771,6 +731,7 @@ class OverviewPage(tk.Frame):
                 if not is_speaking:
                     rec["retake"] = _clean_val(rv.get().strip())
                     rec["std"] = _clean_val(stdv.get().strip())
+                    rec["no_retake"] = bool(no_retake_v.get())
                     
                 if idx is not None:
                     self.app.data.setdefault("monthly", {}).setdefault(cls, {}).setdefault(zh, {}).setdefault(ym, [])[idx] = rec
@@ -1638,7 +1599,6 @@ class LevelTestPage(tk.Frame):
         tbl_wrap = tk.Frame(self._input_frame, bg=U.C["white"], highlightbackground=U.C["border"], highlightthickness=1)
         tbl_wrap.pack(fill="both", expand=True, padx=20, pady=(0, 8))
 
-        self._in_tbl_wrap = tbl_wrap
         self._in_header = tk.Frame(tbl_wrap, bg=U.C["header_bg"])
         self._in_header.pack(fill="x")
         self._in_canvas = tk.Canvas(tbl_wrap, bg=U.C["white"], highlightthickness=0)
@@ -1779,10 +1739,8 @@ class LevelTestPage(tk.Frame):
     def _render_input_rows(self):
         for w in self._in_inner.winfo_children(): 
             w.destroy()
-        # 重建 header frame 確保 columnconfigure 完全清除
-        self._in_header.destroy()
-        self._in_header = tk.Frame(self._in_tbl_wrap, bg=U.C["header_bg"])
-        self._in_header.pack(fill="x")
+        for w in self._in_header.winfo_children(): 
+            w.destroy()
             
         self._rows = []
         cls = self._in_cls_var.get()
