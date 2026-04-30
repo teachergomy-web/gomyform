@@ -50,18 +50,16 @@ def _clean_val(v):
 
 # 💡 底層輔助：安全刪除單筆月成績紀錄
 def _delete_monthly_rec(data, cls, zh, ym, r_type, r_date, r_range, r_item):
-    try:
-        recs = data.get("monthly_records", {}).get(cls, {}).get(ym, {}).get(zh, [])
-        for i, r in enumerate(recs):
-            if r.get("type") == r_type and r.get("date") == r_date and r.get("range") == r_range and r.get("item") == r_item:
-                del recs[i]
-                return True
-    except Exception: pass
+    def match(r):
+        return (r.get("type") == r_type and
+                r.get("date") == r_date and
+                r.get("item") == r_item and
+                r.get("range", "") == (r_range or ""))
 
     try:
         recs = data.get("monthly", {}).get(cls, {}).get(zh, {}).get(ym, [])
         for i, r in enumerate(recs):
-            if r.get("type") == r_type and r.get("date") == r_date and r.get("range") == r_range and r.get("item") == r_item:
+            if match(r):
                 del recs[i]
                 return True
     except Exception: pass
@@ -182,8 +180,29 @@ class OverviewPage(tk.Frame):
                 for ym in cls_months.keys():
                     if ym: years.append(ym[:4])
             return max(years) if years else str(datetime.now().year)
-        self._yr_var  = tk.StringVar(value=_latest_year(self.app.data))
-        self._mo_var  = tk.StringVar(value=f"{datetime.now().month:02d}")
+        def _latest_ym(data):
+            """找最新有資料的年月"""
+            yms = []
+            # 從 monthly 成績取
+            for cls_data in data.get("monthly", {}).values():
+                for zh_data in cls_data.values():
+                    for ym in zh_data.keys():
+                        if ym and len(ym) >= 7:
+                            yms.append(ym[:7])
+            # 從 comments 取
+            for cls_months in data.get("comments", {}).values():
+                for ym in cls_months.keys():
+                    if ym and len(ym) >= 7:
+                        yms.append(ym[:7])
+            if yms:
+                latest = max(yms)
+                return latest[:4], latest[5:7]
+            now = datetime.now()
+            return str(now.year), f"{now.month:02d}"
+
+        latest_y, latest_m = _latest_ym(self.app.data)
+        self._yr_var  = tk.StringVar(value=latest_y)
+        self._mo_var  = tk.StringVar(value=latest_m)
         self._build()
 
     def _build(self):
@@ -517,7 +536,43 @@ class OverviewPage(tk.Frame):
             dlg.destroy()
             self._refresh_table()
 
-        U.btn(dlg, "儲存修改", save, size=14).pack(pady=10)
+        def delete_col():
+            type_name = col_key[0]
+            date_name = col_key[1]
+            if not messagebox.askyesno(
+                "確認刪除",
+                f"確定要刪除「{col_key[0]} {col_key[1]}」的整欄資料？\n"
+                f"（所有學生的此欄成績都會刪除，無法復原）",
+                parent=dlg
+            ):
+                return
+            # 刪除所有學生在此 col_key 的成績
+            ym = f"{self._yr_var.get()}-{self._mo_var.get()}"
+            cls = self._cls_var.get()
+            t, d, ri_it = col_key[0], col_key[1], col_key[2]
+            # ri_it 是 "range item" 合併，需拆開
+            deleted = 0
+            for zh in dm.student_zh_list(self.app.data, cls):
+                recs = self.app.data.get("monthly", {}).get(cls, {}).get(zh, {}).get(ym, [])
+                before = len(recs)
+                recs_new = [
+                    r for r in recs
+                    if not (r.get("type") == t and
+                            r.get("date") == d and
+                            f"{r.get('range','')} {r.get('item','')}".strip() == ri_it)
+                ]
+                if len(recs_new) < before:
+                    self.app.data["monthly"][cls][zh][ym] = recs_new
+                    deleted += before - len(recs_new)
+            if deleted:
+                self.app.save()
+            dlg.destroy()
+            self._refresh_table()
+
+        btn_row = tk.Frame(dlg, bg=U.C["white"])
+        btn_row.pack(pady=10)
+        U.btn(btn_row, "儲存修改", save, size=14).pack(side="left", padx=6)
+        U.danger_btn(btn_row, "刪除整欄", delete_col, size=14).pack(side="left", padx=6)
 
     def _refresh_table(self):
         cls = self._cls_var.get()
@@ -1583,6 +1638,7 @@ class LevelTestPage(tk.Frame):
         tbl_wrap = tk.Frame(self._input_frame, bg=U.C["white"], highlightbackground=U.C["border"], highlightthickness=1)
         tbl_wrap.pack(fill="both", expand=True, padx=20, pady=(0, 8))
 
+        self._in_tbl_wrap = tbl_wrap
         self._in_header = tk.Frame(tbl_wrap, bg=U.C["header_bg"])
         self._in_header.pack(fill="x")
         self._in_canvas = tk.Canvas(tbl_wrap, bg=U.C["white"], highlightthickness=0)
@@ -1723,8 +1779,10 @@ class LevelTestPage(tk.Frame):
     def _render_input_rows(self):
         for w in self._in_inner.winfo_children(): 
             w.destroy()
-        for w in self._in_header.winfo_children(): 
-            w.destroy()
+        # 重建 header frame 確保 columnconfigure 完全清除
+        self._in_header.destroy()
+        self._in_header = tk.Frame(self._in_tbl_wrap, bg=U.C["header_bg"])
+        self._in_header.pack(fill="x")
             
         self._rows = []
         cls = self._in_cls_var.get()
