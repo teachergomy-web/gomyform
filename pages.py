@@ -1,3 +1,5 @@
+VERSION = "2026.05.09"
+
 """
 pages.py — 所有頁面
 整合功能：智慧網格導航(Auto-Scroll)、小數點淨化、月詳細介面優化、無語法縮寫安全版。
@@ -182,8 +184,26 @@ class OverviewPage(tk.Frame):
                 for ym in cls_months.keys():
                     if ym: years.append(ym[:4])
             return max(years) if years else str(datetime.now().year)
-        self._yr_var  = tk.StringVar(value=_latest_year(self.app.data))
-        self._mo_var  = tk.StringVar(value=f"{datetime.now().month:02d}")
+        def _latest_ym(data):
+            yms = []
+            for cls_data in data.get("monthly", {}).values():
+                for zh_data in cls_data.values():
+                    for ym in zh_data.keys():
+                        if ym and len(ym) >= 7:
+                            yms.append(ym[:7])
+            for cls_months in data.get("comments", {}).values():
+                for ym in cls_months.keys():
+                    if ym and len(ym) >= 7:
+                        yms.append(ym[:7])
+            if yms:
+                latest = max(yms)
+                return latest[:4], latest[5:7]
+            now = datetime.now()
+            return str(now.year), f"{now.month:02d}"
+
+        latest_y, latest_m = _latest_ym(self.app.data)
+        self._yr_var  = tk.StringVar(value=latest_y)
+        self._mo_var  = tk.StringVar(value=latest_m)
         self._build()
 
     def _build(self):
@@ -517,7 +537,34 @@ class OverviewPage(tk.Frame):
             dlg.destroy()
             self._refresh_table()
 
-        U.btn(dlg, "儲存修改", save, size=14).pack(pady=10)
+        def delete_col():
+            if not messagebox.askyesno(
+                "確認刪除",
+                f"確定要刪除「{col_key[0]} {col_key[1]}」的整欄資料？\n（所有學生的此欄成績都會刪除，無法復原）",
+                parent=dlg
+            ):
+                return
+            ym = f"{self._yr_var.get()}-{self._mo_var.get()}"
+            cls = self._cls_var.get()
+            t, d, ri_it = col_key[0], col_key[1], col_key[2]
+            for zh in dm.student_zh_list(self.app.data, cls):
+                recs = self.app.data.get("monthly", {}).get(cls, {}).get(zh, {}).get(ym, [])
+                recs_new = [
+                    r for r in recs
+                    if not (r.get("type") == t and
+                            r.get("date") == d and
+                            f"{r.get('range','')} {r.get('item','')}".strip() == ri_it)
+                ]
+                if len(recs_new) < len(recs):
+                    self.app.data["monthly"][cls][zh][ym] = recs_new
+            self.app.save()
+            dlg.destroy()
+            self._refresh_table()
+
+        btn_row = tk.Frame(dlg, bg=U.C["white"])
+        btn_row.pack(pady=10)
+        U.btn(btn_row, "儲存修改", save, size=14).pack(side="left", padx=6)
+        U.danger_btn(btn_row, "刪除整欄", delete_col, size=14).pack(side="left", padx=6)
 
     def _refresh_table(self):
         cls = self._cls_var.get()
@@ -615,7 +662,9 @@ class OverviewPage(tk.Frame):
                 is_speaking = (col_key[0] == "口說")
                 
                 if not rec or str(rec.get("score", "")) == "":
-                    absent_list.append(f"{zh}({col_key[0]})")
+                    date_str_a = col_key[1][5:].replace("-", "/") if len(col_key[1]) >= 5 else col_key[1]
+                    en_name_a = stu.get("en", "").strip() or zh
+                    absent_list.append(f"{date_str_a} {col_key[2]} {en_name_a}")
                     lbl = tk.Label(f_cell, text="缺考", font=U.FMB, bg=U.C["white"], fg=U.C["ng_fg"], cursor="hand2")
                     lbl.pack(expand=True, fill="both")
                     lbl.bind("<Button-1>", lambda e, z=zh, k=col_key: self._quick_edit(z, k))
@@ -635,7 +684,7 @@ class OverviewPage(tk.Frame):
                         return v in ("A++", "A+", "A")
                         
                 ok = is_ok(sc) if rt == "" else is_ok(rt)
-                # no_retake：強制顯示綠色（不補課）
+                # no_retake：僅此筆強制綠色，不影響其他成績
                 if rec.get("no_retake", False):
                     c_bg = U.C["ok_bg"]
                     c_fg = U.C["ok_fg"]
@@ -644,7 +693,9 @@ class OverviewPage(tk.Frame):
                     c_fg = U.C["ok_fg"] if ok else U.C["ng_fg"]
 
                 if not ok and not is_speaking and not rec.get("no_retake", False):
-                    missing_list.append(f"{zh}({col_key[0]})")
+                    date_str = col_key[1][5:].replace("-", "/") if len(col_key[1]) >= 5 else col_key[1]
+                    en_name = stu.get("en", "").strip() or zh
+                    missing_list.append(f"{date_str} {col_key[2]} {en_name}")
 
                 f_cell.config(bg=c_bg)
                 lbl = tk.Label(f_cell, text=str(sc) if rt == "" else f"{sc}/{rt}", font=U.FMB, bg=c_bg, fg=c_fg, cursor="hand2")
@@ -653,7 +704,7 @@ class OverviewPage(tk.Frame):
 
         msg = []
         if missing_list: 
-            msg.append("需補考：" + "、".join(missing_list))
+            msg.append("補考：" + "、".join(missing_list))
         if absent_list: 
             msg.append("缺考：" + "、".join(absent_list))
             
@@ -666,7 +717,13 @@ class OverviewPage(tk.Frame):
         ym = f"{self._yr_var.get()}-{self._mo_var.get()}"
         cls = self._cls_var.get()
         recs = dm.monthly_records(self.app.data, cls, zh, ym)
-        idx = next((i for i, r in enumerate(recs) if r.get("type") == col_key[0] and r.get("date") == col_key[1]), None)
+        def _match_col(r, ck):
+            """比對 type + date + range/item 組合，確保同一天不同考試不混淆"""
+            if r.get("type") != ck[0] or r.get("date") != ck[1]:
+                return False
+            ri_it = f"{r.get('range','')} {r.get('item','')}".strip()
+            return ri_it == ck[2]
+        idx = next((i for i, r in enumerate(recs) if _match_col(r, col_key)), None)
         
         if idx is not None:
             rec = recs[idx]
@@ -704,19 +761,16 @@ class OverviewPage(tk.Frame):
         tk.Entry(r1, textvariable=sv, font=U.FM, width=10, justify="center").pack(side="left")
 
         if not is_speaking:
-            # 補考欄位
             r_rt = tk.Frame(f)
             r_rt.pack(fill="x", pady=5)
             tk.Label(r_rt, text="補考：", font=U.FM, width=8).pack(side="left")
             tk.Entry(r_rt, textvariable=rv, font=U.FM, width=10, justify="center").pack(side="left")
 
-            # 標準分欄位
             r_std = tk.Frame(f)
             r_std.pack(fill="x", pady=5)
             tk.Label(r_std, text="標準分：", font=U.FM, width=8).pack(side="left")
             tk.Entry(r_std, textvariable=stdv, font=U.FM, width=10, justify="center", state="readonly").pack(side="left")
 
-            # 不補課勾選
             r_nr = tk.Frame(f)
             r_nr.pack(fill="x", pady=5)
             tk.Checkbutton(r_nr, text="不補課（此筆不列入補考名單）",
@@ -1070,9 +1124,30 @@ class ClassesPage(tk.Frame):
             return
             
         new_zh, new_en, _, new_std = res
+        old_zh = stu["zh"]
         stu["zh"] = new_zh
         stu["en"] = new_en
         stu["std"] = new_std
+
+        # 同步更新所有以 zh 為 key 的資料
+        if old_zh != new_zh:
+            cls = self._sel_cls
+            # monthly 成績
+            if cls in self.app.data.get("monthly", {}):
+                cls_data = self.app.data["monthly"][cls]
+                if old_zh in cls_data:
+                    cls_data[new_zh] = cls_data.pop(old_zh)
+            # comments 評語
+            if cls in self.app.data.get("comments", {}):
+                for ym, ym_data in self.app.data["comments"][cls].items():
+                    if old_zh in ym_data:
+                        ym_data[new_zh] = ym_data.pop(old_zh)
+            # lt_comments 升級考評語
+            if cls in self.app.data.get("lt_comments", {}):
+                for dt, dt_data in self.app.data["lt_comments"][cls].items():
+                    if old_zh in dt_data:
+                        dt_data[new_zh] = dt_data.pop(old_zh)
+
         self.app.save()
         self._load_stu_list()
 
@@ -1411,7 +1486,7 @@ class BooksPage(tk.Frame):
             tk.Label(row, text="・".join(book["items"]), font=U.FM, bg=bg, fg=U.C["text_lt"]).grid(row=0, column=2, sticky="w", padx=10, pady=6)
             
             bc = tk.Frame(row, bg=bg)
-            bc.grid(row=0, column=3, sticky="w", padx=10, pady=6)
+            bc.grid(row=0, column=4, sticky="w", padx=10, pady=6)
             U.ghost_btn(bc, "編輯", lambda idx=i: self._edit_book(idx), size=13).pack()
 
     def _add_book(self):
@@ -1868,8 +1943,23 @@ class ExportPage(tk.Frame):
     def __init__(self, parent, app):
         super().__init__(parent, bg=U.C["bg"])
         self.app = app
-        self._yr_var = tk.StringVar(value=str(datetime.now().year))
-        self._mo_var = tk.StringVar(value=f"{datetime.now().month:02d}")
+        # 從資料取最新月份（不用當前時間，避免自動跳到沒有資料的月份）
+        def _latest_ym(data):
+            yms = []
+            for cls_data in data.get("monthly", {}).values():
+                for zh_data in cls_data.values():
+                    for ym in zh_data.keys():
+                        if ym and len(ym) >= 7:
+                            yms.append(ym[:7])
+            if yms:
+                latest = max(yms)
+                return latest[:4], latest[5:7]
+            now = datetime.now()
+            return str(now.year), f"{now.month:02d}"
+
+        latest_y, latest_m = _latest_ym(self.app.data)
+        self._yr_var = tk.StringVar(value=latest_y)
+        self._mo_var = tk.StringVar(value=latest_m)
         self._teacher_var = tk.StringVar() 
         self._check_vars = {}
         self._build()
@@ -1950,126 +2040,139 @@ class ExportPage(tk.Frame):
     def _show_missing_list(self):
         dlg = tk.Toplevel(self)
         dlg.title("本月兒美成績補考名單")
-       # dlg.geometry("550x550") #原視窗大小
         dlg.grab_set()
         dlg.update()
         dlg.lift()
         dlg.focus_force()
-        
+
         f = tk.Frame(dlg, bg=U.C["bg"])
         f.pack(fill="both", expand=True)
-        
-        lbl = U.lbl(f, "本月兒美成績補考名單", size=16, bold=True)
-        lbl.pack(pady=(15, 10))
-        
-        text_area = tk.Text(f, font=U.FM, bg=U.C["white"], relief="flat", highlightbackground=U.C["border"], highlightthickness=1, padx=10, pady=10)
-        text_area.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-        
-        output_lines = []
-        ym = f"{self._yr_var.get()}-{self._mo_var.get()}"
-        
-        for cls in dm.class_list(self.app.data):
-            cls_name = cls if "班" in cls else f"{cls}班"
-            missing_info = []
 
-            all_recs = dm.all_monthly_records(self.app.data, cls, ym)
-            class_test_keys = set()
-            for recs in all_recs.values():
-                for r in recs:
-                    class_test_keys.add((r.get("type"), r.get("date"), r.get("range"), r.get("item")))
-            
-            sorted_keys = sorted(list(class_test_keys), key=lambda x: x[1]) 
-            
-            for test_key in sorted_keys:
-                t_type, t_date, t_range, t_item = test_key
-                is_speaking = (t_type == "口說")
-                missing_stus = []
-                for stu in dm.class_students(self.app.data, cls):
-                    stu_recs = all_recs.get(stu["zh"], [])
-                    rec = next((r for r in stu_recs if (r.get("type"), r.get("date"), r.get("range"), r.get("item")) == test_key), None)
-                    
-                    is_missing = False
-                    if not rec:
-                        is_missing = True
-                    else:
-                        sc = str(rec.get("score", ""))
-                        rt = str(rec.get("retake", ""))
-                        std = rec.get("std", stu.get("std", 90))
-                        
-                        if not sc:
-                            is_missing = True
-                        elif not is_speaking:
-                            def _ok(v, s):
-                                if not v: return False
-                                try: return float(v) >= float(s)
-                                except ValueError: return str(v) in ("A++", "A+", "A")
-                            if not _ok(sc, std) and not _ok(rt, std):
-                                is_missing = True
-                                
-                    if is_missing:
-                        name = stu.get("en", "").strip() or stu.get("zh", "").strip()
-                        missing_stus.append(name)
-                
-                if missing_stus:
-                    date_str = t_date[5:].replace("-", "/") if len(t_date) >= 5 else t_date
-                    ri_str = f"{t_range} {t_item}".strip()
-                    type_prefix = "" if t_type == "考試本" else f"[{t_type}] "
-                    missing_info.append(f"{date_str} {type_prefix}{ri_str} {'、'.join(missing_stus)}".replace("  ", " "))
+        hdr = tk.Frame(f, bg=U.C["bg"])
+        hdr.pack(fill="x", pady=(10, 0))
+        U.lbl(hdr, "本月兒美成績補考名單", size=16, bold=True, bg=U.C["bg"]).pack(side="left", padx=20)
+        U.ghost_btn(hdr, "🔄 重新整理", lambda: _refresh_missing(), size=11).pack(side="right", padx=12)
 
-            lts = self.app.data.get("classes", {}).get(cls, {}).get("leveltests", [])
-            if not lts:
-                lts = self.app.data.get("leveltest", {}).get(cls, [])
-                
-            for lt in sorted(lts, key=lambda x: x.get("date", "")):
-                lt_date = lt.get("date", "")
-                ym_from_date = lt_date[:7].replace("/", "-") if "/" in lt_date else lt_date[:7]
-                if ym_from_date != ym: continue 
+        text_area = tk.Text(f, font=U.FM, bg=U.C["white"], relief="flat",
+                            highlightbackground=U.C["border"], highlightthickness=1,
+                            padx=10, pady=10)
+        text_area.pack(fill="both", expand=True, padx=20, pady=(5, 20))
 
-                book = lt.get("book", "")
-                scores = lt.get("scores", {})
-                retakes = lt.get("retakes", {})
-                stds = lt.get("stds", {})
-                
-                all_items = set()
-                for zh_scores in scores.values():
-                    all_items.update(zh_scores.keys())
-                if not all_items:
-                    all_items = set(dm.book_items(self.app.data, book))
-                
-                for it in sorted(list(all_items)):
-                    missing_stus = []
+        def _is_ok(v, std):
+            if not v or v == "": return False
+            try: return float(v) >= float(std)
+            except: return str(v) in ("A++", "A+", "A")
+
+        def _refresh_missing():
+            text_area.config(state="normal")
+            text_area.delete("1.0", "end")
+            output_lines = []
+            ym = f"{self._yr_var.get()}-{self._mo_var.get()}"
+
+            for cls in dm.class_list(self.app.data):
+                cls_name = cls if "班" in cls else f"{cls}班"
+                missing_info = []
+                absent_info = []
+
+                all_recs = dm.all_monthly_records(self.app.data, cls, ym)
+
+                # 收集所有考試欄位 key（跟 _refresh_table 相同方式）
+                class_test_keys = set()
+                col_recs_by_zh = {}
+                for zh in dm.student_zh_list(self.app.data, cls):
+                    col_recs_by_zh[zh] = {}
+                    for r in all_recs.get(zh, []):
+                        t = r.get("type", "")
+                        d = r.get("date", "")
+                        ri = r.get("range", "")
+                        it = r.get("item", "")
+                        key = (t, d, f"{ri} {it}".strip())
+                        class_test_keys.add(key)
+                        col_recs_by_zh[zh][key] = r  # 覆蓋 = 取最後一筆
+
+                sorted_keys = sorted(list(class_test_keys),
+                    key=lambda k: (["考試本","口說","單字"].index(k[0])
+                                   if k[0] in ["考試本","口說","單字"] else 99, k[1]))
+
+                for col_key in sorted_keys:
+                    t_type, t_date, ri_it = col_key
+                    is_speaking = (t_type == "口說")
+                    need_retake = []
+                    absent = []
+
                     for stu in dm.class_students(self.app.data, cls):
                         zh = stu["zh"]
-                        sc = scores.get(zh, {}).get(it, "")
-                        rt = retakes.get(zh, {}).get(it, "")
-                        std = stds.get(zh, {}).get(it, 90)
-                        
-                        def _ok(v, s):
-                            if v == "" or v is None: return False
-                            try: return float(v) >= float(s)
-                            except ValueError: return str(v) in ("A++", "A+", "A")
-                        
-                        if not _ok(sc, std) and not _ok(rt, std):
-                            name = stu.get("en", "").strip() or stu.get("zh", "").strip()
-                            missing_stus.append(name)
-                            
-                    if missing_stus:
-                        date_str = lt_date[5:].replace("-", "/") if len(lt_date) >= 5 else lt_date
-                        missing_info.append(f"{date_str} [升級考] {book}-{it} {'、'.join(missing_stus)}")
+                        rec = col_recs_by_zh.get(zh, {}).get(col_key)
+                        std = stu.get("std", 90)
 
-            if missing_info:
-                output_lines.append(f"{cls_name}: \n    " + "\n    ".join(missing_info))
-            else:
-                output_lines.append(f"{cls_name}: 無待處理紀錄")
-        
-# 💡 將文字組合起來
-        final_text = "\n\n".join(output_lines)
-        text_area.insert("1.0", final_text)
-        
-        # 💡 動態計算行數 (最高不超過 25 行，避免內容太多時視窗超出螢幕)
-        total_lines = final_text.count("\n") + 2
-        display_height = max(5, min(total_lines, 25))
-        text_area.config(state="disabled", height=display_height, width=55)
+                        if not rec or str(rec.get("score", "")) == "":
+                            # 缺考（跟 _refresh_table 的邏輯完全相同）
+                            absent.append(stu.get("en","").strip() or zh)
+                        elif rec.get("no_retake", False):
+                            pass  # 不補課
+                        elif is_speaking:
+                            pass  # 口說有成績就不補考
+                        else:
+                            sc = str(rec.get("score", ""))
+                            rt = str(rec.get("retake", ""))
+                            ok = _is_ok(rt, std) if rt else _is_ok(sc, std)
+                            if not ok:
+                                need_retake.append(stu.get("en","").strip() or zh)
+
+                    date_str = t_date[5:].replace("-", "/") if len(t_date) >= 5 else t_date
+                    label = f"{date_str} {ri_it}".replace("  ", " ").strip()
+
+                    if need_retake:
+                        missing_info.append(f"{label} {'、'.join(need_retake)}")
+                    if absent:
+                        absent_info.append(f"{label} {'、'.join(absent)}")
+
+                # 升級考
+                lts = self.app.data.get("classes", {}).get(cls, {}).get("leveltests", [])
+                if not lts:
+                    lts = self.app.data.get("leveltest", {}).get(cls, [])
+
+                for lt in sorted(lts, key=lambda x: x.get("date", "")):
+                    lt_date = lt.get("date", "")
+                    ym_from_date = lt_date[:7].replace("/", "-") if "/" in lt_date else lt_date[:7]
+                    if ym_from_date != ym:
+                        continue
+                    book = lt.get("book", "")
+                    scores = lt.get("scores", {})
+                    retakes = lt.get("retakes", {})
+                    stds = lt.get("stds", {})
+                    all_items = set()
+                    for zh_scores in scores.values():
+                        all_items.update(zh_scores.keys())
+                    if not all_items:
+                        all_items = set(dm.book_items(self.app.data, book))
+                    for it in sorted(list(all_items)):
+                        retake_stus = []
+                        for stu in dm.class_students(self.app.data, cls):
+                            zh = stu["zh"]
+                            sc = scores.get(zh, {}).get(it, "")
+                            rt = retakes.get(zh, {}).get(it, "")
+                            std = stds.get(zh, {}).get(it, 90)
+                            ok = _is_ok(rt, std) if rt else _is_ok(sc, std)
+                            if not ok:
+                                retake_stus.append(stu.get("en","").strip() or zh)
+                        if retake_stus:
+                            date_str = lt_date[5:].replace("-", "/") if len(lt_date) >= 5 else lt_date
+                            missing_info.append(f"{date_str} [升級考] {book}-{it} {'、'.join(retake_stus)}")
+
+                all_info = missing_info + absent_info
+                if all_info:
+                    output_lines.append(f"{cls_name}:\n    " + "\n    ".join(all_info))
+                else:
+                    output_lines.append(f"{cls_name}: 無待處理紀錄")
+
+            final_text = "\n\n".join(output_lines)
+            text_area.insert("1.0", final_text)
+            total_lines = final_text.count("\n") + 2
+            display_height = max(5, min(total_lines, 30))
+            text_area.config(state="disabled", height=display_height, width=60)
+
+        _refresh_missing()
 
     def refresh(self):
         self._load_classes()
@@ -2081,7 +2184,8 @@ class ExportPage(tk.Frame):
         self._check_vars = {}
         ym = f"{self._yr_var.get()}-{self._mo_var.get()}"
         
-        col_defs = [("", 0, 60), ("班級", 1, 200), ("缺考/補考", 2, 200), ("老師評語", 3, 200), ("", 4, 300)]
+        ym_label = f"{self._yr_var.get()}-{self._mo_var.get()}"
+        col_defs = [("", 0, 60), ("班級", 1, 150), ("月份", 2, 80), ("缺考/補考", 3, 150), ("老師評語", 4, 200), ("", 5, 300)]
         for text, ci, mw in col_defs:
             self._exp_header.columnconfigure(ci, minsize=mw)
             tk.Label(self._exp_header, text=text, font=U.FMB, bg=U.C["header_bg"], fg=U.C["text_lt"], anchor="w", pady=6).grid(row=0, column=ci, sticky="w", padx=10)
@@ -2103,40 +2207,60 @@ class ExportPage(tk.Frame):
             cb.grid(row=0, column=0, sticky="w", padx=10, pady=6)
             
             tk.Label(row, text=cls, font=U.FMB, bg=bg, fg=U.C["text"]).grid(row=0, column=1, sticky="w", padx=10, pady=6)
+            tk.Label(row, text=ym_label[5:], font=U.FM, bg=bg, fg=U.C["text_lt"]).grid(row=0, column=2, sticky="w", padx=10, pady=6)
             
+            # 與總覽一致：每個 key 取最後一筆，排除口說、排除不補課
             all_recs = dm.all_monthly_records(self.app.data, cls, ym)
-            class_test_keys = set()
-            for recs in all_recs.values():
-                for r in recs:
-                    class_test_keys.add((r.get("type"), r.get("date"), r.get("range"), r.get("item")))
-            
+
+            def _score_ok(v, std):
+                if not v or str(v).strip() == "": return False
+                try: return float(v) >= float(std)
+                except: return str(v) in ("A++", "A+", "A")
+
+            # 收集班級所有考試 key（用來找缺考）
+            class_keys = set()
+            for zh_recs in all_recs.values():
+                for r in zh_recs:
+                    t = r.get("type", "")
+                    d = r.get("date", "")
+                    ri = r.get("range", "")
+                    it = r.get("item", "")
+                    class_keys.add((t, d, f"{ri} {it}".strip()))
+
             missing = 0
             for stu in dm.class_students(self.app.data, cls):
-                stu_recs = all_recs.get(stu["zh"], [])
-                for test_key in class_test_keys:
-                    t_type, _, _, _ = test_key
-                    is_speaking = (t_type == "口說")
-                    rec = next((r for r in stu_recs if (r.get("type"), r.get("date"), r.get("range"), r.get("item")) == test_key), None)
-                    
-                    if not rec:
-                        missing += 1
-                    else:
-                        sc = str(rec.get("score", ""))
-                        rt = str(rec.get("retake", ""))
-                        std = _fmt(stu.get("std", 90))
-                        
-                        if not sc:
-                            missing += 1
-                        elif not is_speaking:
-                            def _ok(v, s):
-                                if not v: return False
-                                try: return float(v) >= float(s)
-                                except ValueError: return str(v) in ("A++", "A+", "A")
-                            if not _ok(sc, std) and not _ok(rt, std):
-                                missing += 1
+                zh = stu["zh"]
+                std = stu.get("std", 90)
+                recs_by_key = {}
+                for r in all_recs.get(zh, []):
+                    t = r.get("type", "")
+                    d = r.get("date", "")
+                    ri = r.get("range", "")
+                    it = r.get("item", "")
+                    key = (t, d, f"{ri} {it}".strip())
+                    recs_by_key[key] = r  # 覆蓋 = 取最後一筆
 
+                for key in class_keys:
+                    is_speaking = (key[0] == "口說")
+                    rec = recs_by_key.get(key)
+                    if not rec or str(rec.get("score", "")).strip() == "":
+                        # 缺考（口說也算）
+                        if not (rec and rec.get("no_retake", False)):
+                            missing += 1
+                    elif rec.get("no_retake", False):
+                        pass  # 不補課不計
+                    elif is_speaking:
+                        pass  # 口說有成績不計補考
+                    else:
+                        sc = str(rec.get("score", "")).strip()
+                        rt = str(rec.get("retake", "")).strip()
+                        if not _score_ok(rt if rt else sc, std):
+                            missing += 1
+
+            import sys
+            print(f"DEBUG {cls} {ym} missing={missing}", file=sys.stderr)
             pc = U.C["ng_fg"] if missing > 0 else U.C["text_lt"]
-            tk.Label(row, text=f"{missing} 筆" if missing > 0 else "—", font=U.FMB if missing > 0 else U.FM, bg=bg, fg=pc).grid(row=0, column=2, sticky="w", padx=10, pady=6)
+            tk.Label(row, text=f"{missing} 筆" if missing > 0 else "—", font=U.FMB if missing > 0 else U.FM, bg=bg, fg=pc).grid(row=0, column=3, sticky="w", padx=10, pady=6)
             
             # 評語填寫狀態
             comments_data = self.app.data.get("comments", {}).get(cls, {}).get(ym, {})
@@ -2152,10 +2276,10 @@ class ExportPage(tk.Frame):
             else:
                 cmt_text = "未填寫"
                 cmt_color = U.C["text_lt"]
-            tk.Label(row, text=cmt_text, font=U.FM, bg=bg, fg=cmt_color).grid(row=0, column=3, sticky="w", padx=10, pady=6)
+            tk.Label(row, text=cmt_text, font=U.FM, bg=bg, fg=cmt_color).grid(row=0, column=4, sticky="w", padx=10, pady=6)
 
             op = tk.Frame(row, bg=bg)
-            op.grid(row=0, column=4, sticky="w", padx=10, pady=6)
+            op.grid(row=0, column=5, sticky="w", padx=10, pady=6)
             U.ghost_btn(op, "單獨輸出", lambda c=cls: self._export_one(c), size=12).pack(side="left")
 
         self._update_summary()
@@ -2335,7 +2459,53 @@ class ExportPage(tk.Frame):
         students = dm.class_students(self.app.data, cls)
         book = dm.class_book(self.app.data, cls)
         
-        students_data = [{"stu": stu, "records": dm.monthly_records(self.app.data, cls, stu["zh"], ym)} for stu in students]
+        # 收集班級所有考試 key（用來補齊缺考學生的紀錄）
+        all_cls_recs = dm.all_monthly_records(self.app.data, cls, ym)
+        class_keys_by_type = {"考試本": [], "口說": [], "單字": []}
+        seen_keys = set()
+        # 按日期排序收集所有 key
+        all_keys_flat = []
+        for zh_recs in all_cls_recs.values():
+            for r in zh_recs:
+                t = r.get("type", "")
+                d = r.get("date", "")
+                ri = r.get("range", "")
+                it = r.get("item", "")
+                key = (t, d, ri, it)
+                if key not in seen_keys and t in class_keys_by_type:
+                    seen_keys.add(key)
+                    all_keys_flat.append(key)
+
+        for t in class_keys_by_type:
+            class_keys_by_type[t] = sorted(
+                [k for k in all_keys_flat if k[0] == t],
+                key=lambda k: k[1]
+            )
+
+        def _fill_records(stu):
+            zh = stu["zh"]
+            existing = dm.monthly_records(self.app.data, cls, zh, ym)
+            # 每個 key 取最後一筆
+            recs_by_key = {}
+            for r in existing:
+                key = (r.get("type",""), r.get("date",""), r.get("range",""), r.get("item",""))
+                recs_by_key[key] = r
+            # 補齊缺考的 key（成績留白）
+            filled = []
+            for t in ["考試本", "口說", "單字"]:
+                for key in class_keys_by_type[t]:
+                    if key in recs_by_key:
+                        filled.append(recs_by_key[key])
+                    else:
+                        # 缺考：補一筆只有日期/範圍/項目的空白紀錄
+                        filled.append({
+                            "type": key[0], "date": key[1],
+                            "range": key[2], "item": key[3],
+                            "score": "", "retake": "", "std": 90
+                        })
+            return filled
+
+        students_data = [{"stu": stu, "records": _fill_records(stu)} for stu in students]
         comments, goals, sig_b64 = self._get_comments_goals_sig(cls, ym)
 
         try:
@@ -2377,7 +2547,53 @@ class ExportPage(tk.Frame):
                 students = dm.class_students(self.app.data, cls)
                 book = dm.class_book(self.app.data, cls)
                 
-                students_data = [{"stu": stu, "records": dm.monthly_records(self.app.data, cls, stu["zh"], ym)} for stu in students]
+                # 收集班級所有考試 key（用來補齊缺考學生的紀錄）
+                all_cls_recs = dm.all_monthly_records(self.app.data, cls, ym)
+                class_keys_by_type = {"考試本": [], "口說": [], "單字": []}
+                seen_keys = set()
+                # 按日期排序收集所有 key
+                all_keys_flat = []
+                for zh_recs in all_cls_recs.values():
+                    for r in zh_recs:
+                        t = r.get("type", "")
+                        d = r.get("date", "")
+                        ri = r.get("range", "")
+                        it = r.get("item", "")
+                        key = (t, d, ri, it)
+                        if key not in seen_keys and t in class_keys_by_type:
+                            seen_keys.add(key)
+                            all_keys_flat.append(key)
+        
+                for t in class_keys_by_type:
+                    class_keys_by_type[t] = sorted(
+                        [k for k in all_keys_flat if k[0] == t],
+                        key=lambda k: k[1]
+                    )
+        
+                def _fill_records(stu):
+                    zh = stu["zh"]
+                    existing = dm.monthly_records(self.app.data, cls, zh, ym)
+                    # 每個 key 取最後一筆
+                    recs_by_key = {}
+                    for r in existing:
+                        key = (r.get("type",""), r.get("date",""), r.get("range",""), r.get("item",""))
+                        recs_by_key[key] = r
+                    # 補齊缺考的 key（成績留白）
+                    filled = []
+                    for t in ["考試本", "口說", "單字"]:
+                        for key in class_keys_by_type[t]:
+                            if key in recs_by_key:
+                                filled.append(recs_by_key[key])
+                            else:
+                                # 缺考：補一筆只有日期/範圍/項目的空白紀錄
+                                filled.append({
+                                    "type": key[0], "date": key[1],
+                                    "range": key[2], "item": key[3],
+                                    "score": "", "retake": "", "std": 90
+                                })
+                    return filled
+        
+                students_data = [{"stu": stu, "records": _fill_records(stu)} for stu in students]
                 
                 comments, goals, sig_b64 = self._get_comments_goals_sig(cls, ym)
                 dx.export_monthly_batch(
