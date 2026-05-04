@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>高米補習班｜升級考評語</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Microsoft JhengHei',sans-serif;background:#f5f5f7;color:#1d1d1f;min-height:100vh}
+.wrap{max-width:480px;margin:0 auto;padding:1rem 1rem 2rem}
+.top{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;padding:.75rem 1rem;background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.badge{width:42px;height:42px;border-radius:50%;background:#E8770A;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex-shrink:0}
+.top h1{font-size:16px;font-weight:600}
+.top p{font-size:12px;color:#6e6e73;margin-top:2px}
+.steps{display:flex;gap:4px;margin-bottom:1rem}
+.step{flex:1;height:4px;border-radius:2px;background:#e5e5ea;transition:background .3s}
+.step.on{background:#E8770A}
+.card{background:#fff;border-radius:14px;padding:1.1rem;margin-bottom:.75rem;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.sec-label{font-size:11px;font-weight:600;color:#6e6e73;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.6rem}
+label{font-size:14px;font-weight:500;display:block;margin-bottom:.3rem}
+select,textarea{width:100%;font-family:inherit;font-size:15px;background:#f5f5f7;border:1.5px solid #e5e5ea;border-radius:10px;padding:.55rem .85rem;outline:none;-webkit-appearance:none;color:#1d1d1f}
+select:focus,textarea:focus{border-color:#E8770A;background:#fff}
+textarea{resize:none;line-height:1.7}
+.info-box{background:#fff8f0;border:1.5px solid #f0c070;border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem}
+.info-box .cls-name{font-size:16px;font-weight:600;color:#E8770A}
+.info-box .cls-detail{font-size:13px;color:#888;margin-top:3px}
+.score-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.75rem}
+.score-item{background:#f5f5f7;border-radius:8px;padding:.5rem .75rem;display:flex;justify-content:space-between;align-items:center}
+.score-item .s-name{font-size:13px;color:#6e6e73}
+.score-item .s-val{font-size:15px;font-weight:600}
+.score-item .s-val.ok{color:#30d158}.score-item .s-val.ng{color:#ff3b30}
+.chk-group{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.75rem}
+.chk-item{display:flex;align-items:center;gap:.6rem;font-size:14px;font-weight:400;padding:.3rem 0;cursor:pointer}
+.chk-item input[type=checkbox]{width:20px;height:20px;accent-color:#E8770A;flex-shrink:0;cursor:pointer}
+.radio-group{display:flex;gap:1.5rem;margin-bottom:.75rem}
+.radio-item{display:flex;align-items:center;gap:.5rem;font-size:15px;font-weight:500;cursor:pointer}
+.radio-item.pass{color:#30d158}.radio-item.fail{color:#ff3b30}
+.radio-item input{width:18px;height:18px;cursor:pointer}
+.cnt{font-size:12px;color:#aeaeb2;text-align:right;margin-top:.2rem}
+.cnt.warn{color:#ff9f0a}.cnt.over{color:#ff3b30}
+.stu-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.stu-name{font-size:17px;font-weight:600}.stu-en{font-size:13px;color:#6e6e73;margin-top:1px}
+.stu-prog{font-size:13px;color:#aeaeb2;font-weight:500}
+.prog-bar{height:4px;border-radius:2px;background:#e5e5ea;margin-bottom:.85rem;overflow:hidden}
+.prog-fill{height:100%;background:#E8770A;border-radius:2px;transition:width .35s}
+.skip-note{font-size:12px;color:#aeaeb2;margin-top:.35rem}
+.saved-tag{font-size:12px;color:#30d158;margin-top:.3rem;display:none}
+.draft-banner{background:#fff8e6;border:1.5px solid #ff9f0a;border-radius:10px;padding:.6rem 1rem;font-size:13px;color:#b8740a;margin-bottom:.75rem;display:none}
+.btn-row{display:flex;gap:8px;margin-bottom:.5rem}
+.btn{flex:1;padding:.75rem;background:#fff;border:1.5px solid #e5e5ea;border-radius:12px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;text-align:center;color:#1d1d1f}
+.btn:hover{background:#f5f5f7}.btn:active{transform:scale(.98)}.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.primary{background:#E8770A;border-color:#E8770A;color:#fff}
+.btn.primary:hover{background:#c96008}
+.btn.save-draft{background:#fff;border-color:#E8770A;color:#E8770A}
+.sig-wrap{border:1.5px solid #e5e5ea;border-radius:12px;overflow:hidden}
+.sig-canvas{width:100%;height:120px;display:block;touch-action:none;cursor:crosshair;background:#fff}
+.sig-toolbar{display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#f5f5f7;border-top:1px solid #e5e5ea}
+.clear-s{background:none;border:none;cursor:pointer;font-size:13px;color:#6e6e73;font-family:inherit}
+.has-sig-tag{font-size:12px;color:#30d158}
+.summary-row{display:flex;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid #f2f2f7;font-size:14px}
+.summary-row:last-child{border:none}
+.summary-row .k{color:#6e6e73}.summary-row .v{font-weight:500}
+.success-card{background:#fff8f0;border:1.5px solid #E8770A;border-radius:14px;padding:1.4rem;text-align:center;margin-bottom:.75rem}
+.success-card .icon{font-size:32px;margin-bottom:.5rem}
+.success-card h2{font-size:17px;font-weight:600;color:#E8770A;margin-bottom:.3rem}
+.success-card p{font-size:13px;color:#E8770A;opacity:.8}
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1d1d1f;color:#fff;padding:.6rem 1.2rem;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="badge">升考</div>
+    <div><h1>升級考評語填寫</h1><p id="pageSubtitle">選擇老師</p></div>
+  </div>
+  <div class="steps" id="stepBar"></div>
+
+  <!-- P1：班級確認 -->
+  <div id="page1">
+    <div class="info-box">
+      <div class="cls-name" id="clsInfoName">載入中...</div>
+      <div class="cls-detail" id="clsInfoDetail"></div>
+    </div>
+    <div class="btn-row"><button class="btn primary" onclick="goP2()">開始填寫 →</button></div>
+  </div>
+
+  <!-- P2：學生評語 -->
+  <div id="page2" style="display:none">
+    <div class="draft-banner" id="draftBanner">📝 已載入上次填寫的內容</div>
+    <div class="card">
+      <div class="stu-header">
+        <div><div class="stu-name" id="stuName"></div><div class="stu-en" id="stuEn"></div></div>
+        <div class="stu-prog" id="stuProg"></div>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+
+
+
+      <div class="sec-label">學習總評（可多選）</div>
+      <div class="chk-group">
+        <label class="chk-item"><input type="checkbox" id="chk_neat">字體工整、請繼續保持</label>
+        <label class="chk-item"><input type="checkbox" id="chk_pronounce">發音標準、說寫流利</label>
+        <label class="chk-item"><input type="checkbox" id="chk_vocab">單字背誦能力佳</label>
+        <label class="chk-item"><input type="checkbox" id="chk_attitude">上課態度認真積極</label>
+        <label class="chk-item"><input type="checkbox" id="chk_express">學習能力強、勇於表達</label>
+      </div>
+
+      <div class="sec-label">評鑑結果</div>
+      <div class="radio-group">
+        <label class="radio-item pass"><input type="radio" name="ltResult" value="pass"> 過關升級</label>
+        <label class="radio-item fail"><input type="radio" name="ltResult" value="fail"> 無法升級</label>
+      </div>
+
+      <div class="sec-label">評語（最多 228 字）</div>
+      <textarea id="commentTa" rows="4" placeholder="請填寫對這位學生的整體評語..." oninput="updateCnt(this,'cmtCnt',228)"></textarea>
+      <div class="cnt" id="cmtCnt">0 / 228 字</div>
+      <div class="skip-note">可暫時跳過，送出前需全部填寫</div>
+      <div class="saved-tag" id="savedTag">✓ 已暫存</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="prevBtn" onclick="moveStu(-1)">← 上一位</button>
+      <button class="btn primary" id="nextBtn" onclick="moveStu(1)">下一位 →</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn save-draft" onclick="saveDraft()">💾 暫存</button>
+    </div>
+  </div>
+
+  <!-- P3：簽名確認 -->
+  <div id="page3" style="display:none">
+    <div class="card">
+      <div class="sec-label">手寫簽名</div>
+      <div class="sig-wrap">
+        <canvas class="sig-canvas" id="sigC" width="800" height="240"></canvas>
+        <div class="sig-toolbar">
+          <span style="font-size:12px;color:#aeaeb2">用手指在框內簽名</span>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span class="has-sig-tag" id="hasSigTag" style="display:none">✓ 已簽名</span>
+            <button class="clear-s" onclick="clearSig()">清除重簽</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-label">確認資料</div>
+      <div id="summaryRows"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="backToStu()">← 返回</button>
+      <button class="btn primary" id="submitBtn" onclick="submitAll()">送出 ✓</button>
+    </div>
+  </div>
+
+  <!-- P4：送出成功 -->
+  <div id="page4" style="display:none">
+    <div class="success-card">
+      <div class="icon">✅</div>
+      <h2>升級考評語已送出！</h2>
+      <p id="successDetail"></p>
+      <p style="margin-top:.3rem">如需修改可重新填寫後再送出</p>
+    </div>
+    <div class="card" style="text-align:center;color:#6e6e73;font-size:14px;padding:1.5rem">
+      可以關閉此頁面了
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// 升級考表單專用 Sheet（需要另外建立一個 Sheet + Apps Script）
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbzKgnCmcBH_CJcdtZx_XkZ07nvfKPc9Y-xGUn-ahgXMKcSeCVBBwZKAmjexxYsNBOW8/exec';
+
+const STUDENTS={
+  'A班':[['蔡依岑','Dora'],['林芯妤','Cindy'],['羅健丞','Gary'],['蔡德霖','Derek'],['黃品霏','Penny'],['李睿澄','Ray'],['楊語菲','Ella'],['夏譽慈','Vivian'],['張鈞茗','Ming'],['吳儀婷','Holly'],['鄭楷峰','Kyson'],['蔡凡萱','Sherry'],['葉書廷','Shelly'],['張益誠','Eric']],
+  'B班':[['陳艾鈴','Eileen'],['劉一樂','Elliot'],['許佳瑋','Jerry'],['陳妍希','Mia'],['陳奕亘','Ewan'],['洪秉智','Ben'],['郭宸希','Kacie'],['鄭巧媗','Cherry'],['宋妍欣','Cintia'],['楊喬茵','Joyce'],['蔡依蓁','Dora'],['夏又筑','Judy'],['王鍏','Darwin']],
+  'C班':[['許雅捷','Jane'],['陳彥喆','Andy'],['葉芷廷','Lucy'],['謝宇茿','Dora'],['周楷恩','Ian'],['葉賢','Sam'],['林承祐','York'],['呂亦翔','Fish'],['莊媛淇','Dora'],['陳萱','Mia'],['林祐宇','Yu E'],['莊侑芯','Ciady'],['邱宇廷','Tim'],['潘奕橙','Ethan'],['吳銘右','Mark']],
+  'D班':[['許佳璇','Lily'],['劉冠凜','Daniel'],['鄭茹心','Belle'],['黃家悅','Joanne'],['吳婕羽','Joanna'],['潘彥辰','Pico'],['譚怡仙','Sandy'],['陳瑀賾','Justin'],['陳詩允','Anna'],['吳宥希','Woody'],['李芷褕','Doris'],['潘宥翔','Sean'],['楊芷畇','Una'],['洪誼恬','Eva'],['許晨璦','Candy'],['王佳玉','Jammy']],
+  'E班':[['夏柏謙','Brian'],['陳韋安','Wayne'],['蔡侑廷','YoYo'],['潘崇恩','Ken'],['郭家呈','Daniel'],['謝昇叡','Ryan'],['張詩筠','Sarah'],['林昱崴','Willy']],
+  'F班':[['楊喬閔','Jamie'],['陳榆媗','Anita'],['林禹辰','Max'],['陳民豈','Jason'],['林柏羽','Brady'],['邱盈臻','Candy'],['陳苡媛','ViVi'],['李濰妮','NiNi'],['黃琮淳','Jenny'],['許軒睿','Ray'],['歐家駿','Owen'],['王上允','Evan'],['吳永祥','Shawn']],
+  'G班':[['林巧婕','Jenny'],['許雅姸','Yasmin'],['許莛瑄','Kacie'],['曾泳閎','Hunter'],['胡宗運','Mario'],['蘇裕宏','Sam'],['鄭漢文','Jack'],['楊子欣','Jenny'],['李芮語','Rene'],['蘇子皓','Gino'],['吳永峰','Leo'],['牟巧媃','Angel'],['蔡舜羚','Elsa'],['黃世勛','Joey'],['蔡詠羽','Bella'],['黃俐婷','Bonnie'],['陳彥宇','Derson']],
+  'H班':[['林庭安','Ann'],['陳昱安','Andy'],['楊芷妍','Selina'],['陳妘霏','Fay'],['鍾秉侑','Benny'],['蘇妍婧','Ginny'],['吳坤德','Oswald'],['林芯妘','Susie'],['蔡盛宇','Steven'],['薛育嵋','May'],['周子涵','Hailey'],['黃思諺','Polly'],['陳良佑','Yori'],['滕殷睿','Ray'],['羅品妍','Amy'],['陳語荷','Helly'],['楊櫳博','Ben']],
+};
+
+let curPage=1,curTeacher='',curCls='',curBook='',curDate='',curMonth='';
+let comments={},ltData={},scoresData={},currentStu=0;
+let sigCtx=null,drawing=false,hasSig=false;
+
+// 讀 URL 參數
+const params=new URLSearchParams(window.location.search);
+curCls   = params.get('cls')  || '';
+curBook  = params.get('book') || '';
+curDate  = params.get('date') || '';
+curMonth = params.get('month')|| '';
+
+// 解碼成績（URL-safe base64）
+try{
+  const raw=params.get('scores');
+  if(raw){
+    const b64=raw.replace(/-/g,'+').replace(/_/g,'/');
+    const padded=b64+'='.repeat((4-b64.length%4)%4);
+    scoresData=JSON.parse(atob(padded));
+  }
+}catch(e){ console.error('scores decode error:', e.message); }
+
+// 初始化 P1 顯示
+document.getElementById('clsInfoName').textContent=curCls+'（'+curBook+'）升級考';
+document.getElementById('clsInfoDetail').textContent='考試日期：'+curDate;
+
+function updateStepBar(){
+  const bar=document.getElementById('stepBar');bar.innerHTML='';
+  const subs=['確認老師','學生評語','簽名確認'];
+  const stepPage=[1,2,3];
+  const cur=stepPage.indexOf(curPage);
+  for(let i=0;i<3;i++){const d=document.createElement('div');d.className='step'+(i<=cur?' on':'');bar.appendChild(d);}
+  document.getElementById('pageSubtitle').textContent=subs[Math.max(0,cur)]||'';
+}
+
+function show(n){
+  for(let i=1;i<=4;i++) document.getElementById('page'+i).style.display=i===n?'block':'none';
+  curPage=n;updateStepBar();window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+function goP2(){
+  // 從 URL 參數讀取老師（由系統產生）
+  curTeacher = params.get('teacher') || '';
+  // 先讀草稿，沒有則讀已送出的資料
+  const dk='draft_lt_'+curCls+'_'+curDate;
+  const sk='submitted_lt_'+curCls+'_'+curDate;
+  const saved=localStorage.getItem(dk)||localStorage.getItem(sk);
+  if(saved){
+    try{
+      const d=JSON.parse(saved);
+      if(d.comments&&Object.keys(d.comments).length){
+        comments=d.comments;ltData=d.ltData||{};
+        document.getElementById('draftBanner').style.display='block';
+      }
+    }catch(e){}
+  }
+  currentStu=0;loadStu(0);show(2);
+}
+
+function stus(){return STUDENTS[curCls]||[];}
+
+function loadStu(idx){
+  const list=stus();if(!list.length)return;
+  const[zh,en]=list[idx];
+  document.getElementById('stuName').textContent=zh;
+  document.getElementById('stuEn').textContent=en;
+  document.getElementById('stuProg').textContent=`${idx+1} / ${list.length}`;
+  document.getElementById('progFill').style.width=`${(idx+1)/list.length*100}%`;
+
+  // 勾選
+  const ld=ltData[zh]||{checks:[],result:''};
+  ['neat','pronounce','vocab','attitude','express'].forEach(k=>{
+    document.getElementById('chk_'+k).checked=ld.checks.includes(k);
+  });
+  document.querySelectorAll('input[name=ltResult]').forEach(r=>r.checked=false);
+  if(ld.result){const el=document.querySelector(`input[name=ltResult][value="${ld.result}"]`);if(el)el.checked=true;}
+
+  // 評語
+  const ta=document.getElementById('commentTa');
+  ta.value=comments[zh]||'';updateCnt(ta,'cmtCnt',228);
+  document.getElementById('savedTag').style.display='none';
+  document.getElementById('prevBtn').disabled=idx===0;
+  document.getElementById('nextBtn').textContent=idx===list.length-1?'完成，前往簽名 →':'下一位 →';
+}
+
+function saveCur(){
+  const[zh]=stus()[currentStu];
+  const val=document.getElementById('commentTa').value.trim();
+  if(val)comments[zh]=document.getElementById('commentTa').value;
+  else delete comments[zh];
+  if(val)document.getElementById('savedTag').style.display='block';
+  const checks=['neat','pronounce','vocab','attitude','express'].filter(k=>document.getElementById('chk_'+k).checked);
+  const res=document.querySelector('input[name=ltResult]:checked');
+  ltData[zh]={checks,result:res?res.value:''};
+}
+
+function moveStu(dir){
+  saveCur();
+  const list=stus();
+  if(dir===1&&currentStu===list.length-1){
+    const missing=list.filter(([zh])=>!comments[zh]||!comments[zh].trim()).map(([zh])=>zh);
+    if(missing.length){alert('以下學生尚未填寫評語，無法送出：\n'+missing.join('、')+'\n\n請填完後再送出，或按「暫存」儲存進度。');return;}
+    goSig();return;
+  }
+  currentStu=Math.max(0,Math.min(list.length-1,currentStu+dir));loadStu(currentStu);
+}
+
+function saveDraft(){
+  saveCur();
+  localStorage.setItem('draft_lt_'+curCls+'_'+curDate,JSON.stringify({comments,ltData}));
+  alert('✓ 草稿已暫存\n\n注意：草稿僅儲存在此裝置，\n換裝置或清除瀏覽器資料將會遺失。');
+  show(1);
+}
+
+function goSig(){buildSummary();show(3);initSig();}
+function backToStu(){show(2);loadStu(currentStu);}
+
+function buildSummary(){
+  const total=stus().length;
+  const filled=Object.values(comments).filter(v=>v&&v.trim()).length;
+  document.getElementById('summaryRows').innerHTML=[
+    ['老師',curTeacher+' 老師'],
+    ['班級',curCls+'（'+curBook+'）'],
+    ['考試日期',curDate],
+    ['已填評語',filled+' / '+total+' 位'],
+  ].map(([k,v])=>`<div class="summary-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+}
+
+function updateCnt(el,id,max){
+  const n=el.value.length,c=document.getElementById(id);
+  c.textContent=`${n} / ${max} 字`;c.className='cnt'+(n>max*.9?' warn':'')+(n>=max?' over':'');
+}
+
+function initSig(){
+  if(sigCtx)return;
+  const cv=document.getElementById('sigC');
+  sigCtx=cv.getContext('2d');sigCtx.strokeStyle='#1d1d1f';sigCtx.lineWidth=3;sigCtx.lineCap='round';sigCtx.lineJoin='round';
+  function pos(e){const r=cv.getBoundingClientRect(),sx=cv.width/r.width,sy=cv.height/r.height;const src=e.touches?e.touches[0]:e;return{x:(src.clientX-r.left)*sx,y:(src.clientY-r.top)*sy};}
+  function dn(e){e.preventDefault();drawing=true;const p=pos(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);}
+  function mv(e){e.preventDefault();if(!drawing)return;const p=pos(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();hasSig=true;document.getElementById('hasSigTag').style.display='inline';}
+  function up(){drawing=false;}
+  cv.addEventListener('mousedown',dn);cv.addEventListener('mousemove',mv);cv.addEventListener('mouseup',up);
+  cv.addEventListener('touchstart',dn,{passive:false});cv.addEventListener('touchmove',mv,{passive:false});cv.addEventListener('touchend',up);
+}
+function clearSig(){if(!sigCtx)return;const cv=document.getElementById('sigC');sigCtx.clearRect(0,0,cv.width,cv.height);hasSig=false;document.getElementById('hasSigTag').style.display='none';}
+
+async function submitAll(){
+  if(!hasSig){alert('請先完成手寫簽名');return;}
+  const sigData=document.getElementById('sigC').toDataURL('image/png');
+  const payload=JSON.stringify({
+    teacher:curTeacher,month:curMonth,cls:curCls,book:curBook,
+    date:curDate,status:'已送出',comments,lt_checks:ltData,sig:sigData
+  });
+  document.getElementById('submitBtn').disabled=true;
+  try{
+    await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:payload});
+    await new Promise(r=>setTimeout(r,1500));
+    // 送出後把完整資料存到 localStorage 供重新整理後讀回
+    localStorage.setItem('submitted_lt_'+curCls+'_'+curDate, JSON.stringify({comments, ltData}));
+    localStorage.removeItem('draft_lt_'+curCls+'_'+curDate);
+    const total=stus().length;
+    const filled=Object.values(comments).filter(v=>v&&v.trim()).length;
+    document.getElementById('successDetail').textContent=curCls+'（'+curBook+'）已送出 '+filled+'/'+total+' 份評語';
+    show(4);hasSig=false;sigCtx=null;
+    document.getElementById('submitBtn').disabled=false;
+  }catch(e){
+    document.getElementById('submitBtn').disabled=false;
+    alert('送出失敗，請檢查網路後重試');
+  }
+}
+
+updateStepBar();
+</script>
+</body>
+</html>
