@@ -237,6 +237,7 @@ class DatePicker(tk.Toplevel):
         for w in self.cal_frame.winfo_children():
             w.destroy()
         self.title_lbl.config(text=f"{self.year} 年 {self.month} 月")
+        calendar.setfirstweekday(6)  # 從週日開始
         cal = calendar.monthcalendar(self.year, self.month)
         today = datetime.now()
         try:
