@@ -1,4 +1,4 @@
-VERSION = "2026.05.09"
+VERSION = "2026.05.12"
 
 """
 pages.py — 所有頁面
@@ -1824,15 +1824,37 @@ class LevelTestPage(tk.Frame):
             return
 
         book = dm.class_book(self.app.data, cls)
-        items = dm.book_items(self.app.data, book)
-        self._in_info_lbl.config(text=f"套書：{book}　　考試項目：{'、'.join(items)}")
-        
-        if not items:
+        base_items = dm.book_items(self.app.data, book)
+
+        if not base_items:
             U.lbl(self._in_inner, "此班尚未設定套書，請先至「用書管理」設定", size=15, fg=U.C["ng_fg"], bg=U.C["white"]).pack(padx=20, pady=20)
             return
 
         lts = self.app.data["classes"].get(cls, {}).get("leveltests", [])
         lt = next((x for x in lts if x.get("date") == date), {})
+
+        # 讀取自訂項目順序（若有），否則用套書預設順序
+        saved_order = lt.get("item_order", [])
+        if saved_order and set(saved_order) == set(base_items):
+            items = saved_order
+        else:
+            items = list(base_items)
+
+        self._in_info_lbl.config(text=f"套書：{book}　　考試項目：{'、'.join(items)}")
+        self._current_items = items[:]  # 供儲存時使用
+
+        def _swap_items(i, j):
+            """交換第 i 和第 j 個項目，儲存後重新渲染"""
+            if i < 0 or j >= len(items): return
+            items[i], items[j] = items[j], items[i]
+            # 存入 lt 資料
+            if not lts or lt not in lts:
+                new_lt = {"date": date, "scores": {}, "retakes": {}, "item_order": items[:]}
+                self.app.data["classes"].setdefault(cls, {}).setdefault("leveltests", []).append(new_lt)
+            else:
+                lt["item_order"] = items[:]
+            self.app.save()
+            self._render_input_rows()
 
         self._in_header.columnconfigure(0, minsize=160)
         tk.Label(self._in_header, text="學生", font=U.FMB, bg=U.C["header_bg"], fg=U.C["text_lt"], anchor="w", pady=6).grid(row=0, column=0, rowspan=2, sticky="w", padx=12)
@@ -1844,7 +1866,18 @@ class LevelTestPage(tk.Frame):
             self._in_header.columnconfigure(base_col, minsize=70)
             self._in_header.columnconfigure(base_col+1, minsize=70)
             
-            tk.Label(self._in_header, text=it, font=U.FMB, bg=U.C["header_bg"], fg=U.C["primary"], anchor="center", pady=4).grid(row=0, column=base_col, columnspan=2)
+            hdr_cell = tk.Frame(self._in_header, bg=U.C["header_bg"])
+            hdr_cell.grid(row=0, column=base_col, columnspan=2, pady=2)
+            if idx > 0:
+                tk.Button(hdr_cell, text="◀", font=(U.F,8), relief="flat",
+                          bg=U.C["header_bg"], fg=U.C["primary"], cursor="hand2",
+                          command=lambda i=idx: _swap_items(i, i-1)).pack(side="left")
+            tk.Label(hdr_cell, text=it, font=U.FMB, bg=U.C["header_bg"],
+                     fg=U.C["primary"], padx=4).pack(side="left")
+            if idx < len(items)-1:
+                tk.Button(hdr_cell, text="▶", font=(U.F,8), relief="flat",
+                          bg=U.C["header_bg"], fg=U.C["primary"], cursor="hand2",
+                          command=lambda i=idx: _swap_items(i, i+1)).pack(side="left")
             tk.Label(self._in_header, text="成績", font=U.FS, bg=U.C["header_bg"], fg=U.C["text_lt"], anchor="center").grid(row=1, column=base_col, pady=(0,6))
             tk.Label(self._in_header, text="補考", font=U.FS, bg=U.C["header_bg"], fg=U.C["text_lt"], anchor="center").grid(row=1, column=base_col+1, pady=(0,6))
             
@@ -1932,6 +1965,12 @@ class LevelTestPage(tk.Frame):
                 stds[zh][it] = 90
 
         dm.add_leveltest(self.app.data, cls, self._in_date_var.get(), dm.class_book(self.app.data, cls), scores, retakes, stds)
+        # 儲存 item_order（讓 docx_exporter 按正確順序輸出）
+        lts = self.app.data["classes"].get(cls, {}).get("leveltests", [])
+        date = self._in_date_var.get()
+        lt = next((x for x in lts if x.get("date") == date), None)
+        if lt is not None and hasattr(self, '_current_items'):
+            lt["item_order"] = self._current_items[:]
         self.app.save()
         messagebox.showinfo("完成", "升級考成績已儲存！", parent=self)
         self._show_overview()
@@ -2410,7 +2449,11 @@ class ExportPage(tk.Frame):
                 "retake": lt.get("retakes", {}).get(zh, {}).get(it, ""),
                 "std":    _fmt(next((s.get("std", 90) for s in dm.class_students(self.app.data, cls) if s["zh"] == zh), 90)),
             } for it in all_items}
-            records_for_export.append({"zh": zh, "items": items_data})
+            records_for_export.append({
+                "zh": zh,
+                "items": items_data,
+                "item_order": lt.get("item_order", all_items),
+            })
 
         base = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).parent
         tmpl = next((str(p) for p in [base / "升級考模板.docx"] if p.exists()), None)
@@ -2459,53 +2502,7 @@ class ExportPage(tk.Frame):
         students = dm.class_students(self.app.data, cls)
         book = dm.class_book(self.app.data, cls)
         
-        # 收集班級所有考試 key（用來補齊缺考學生的紀錄）
-        all_cls_recs = dm.all_monthly_records(self.app.data, cls, ym)
-        class_keys_by_type = {"考試本": [], "口說": [], "單字": []}
-        seen_keys = set()
-        # 按日期排序收集所有 key
-        all_keys_flat = []
-        for zh_recs in all_cls_recs.values():
-            for r in zh_recs:
-                t = r.get("type", "")
-                d = r.get("date", "")
-                ri = r.get("range", "")
-                it = r.get("item", "")
-                key = (t, d, ri, it)
-                if key not in seen_keys and t in class_keys_by_type:
-                    seen_keys.add(key)
-                    all_keys_flat.append(key)
-
-        for t in class_keys_by_type:
-            class_keys_by_type[t] = sorted(
-                [k for k in all_keys_flat if k[0] == t],
-                key=lambda k: k[1]
-            )
-
-        def _fill_records(stu):
-            zh = stu["zh"]
-            existing = dm.monthly_records(self.app.data, cls, zh, ym)
-            # 每個 key 取最後一筆
-            recs_by_key = {}
-            for r in existing:
-                key = (r.get("type",""), r.get("date",""), r.get("range",""), r.get("item",""))
-                recs_by_key[key] = r
-            # 補齊缺考的 key（成績留白）
-            filled = []
-            for t in ["考試本", "口說", "單字"]:
-                for key in class_keys_by_type[t]:
-                    if key in recs_by_key:
-                        filled.append(recs_by_key[key])
-                    else:
-                        # 缺考：補一筆只有日期/範圍/項目的空白紀錄
-                        filled.append({
-                            "type": key[0], "date": key[1],
-                            "range": key[2], "item": key[3],
-                            "score": "", "retake": "", "std": 90
-                        })
-            return filled
-
-        students_data = [{"stu": stu, "records": _fill_records(stu)} for stu in students]
+        students_data = [{"stu": stu, "records": dm.monthly_records(self.app.data, cls, stu["zh"], ym)} for stu in students]
         comments, goals, sig_b64 = self._get_comments_goals_sig(cls, ym)
 
         try:
