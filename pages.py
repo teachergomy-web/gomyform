@@ -1,4 +1,4 @@
-VERSION = "2026.05.12"
+VERSION = "2026.05.16"
 
 """
 pages.py — 所有頁面
@@ -359,7 +359,12 @@ class OverviewPage(tk.Frame):
                                 # 💡 修正 3：移除強制清空 VOC 跟 說 的規則，讓單字跟口說項目能正常寫入
                                 if rng == "U": rng = ""
                                 if itm == "0": itm = ""
-                                
+                                # 保護：若 range 空白但 item 含空格，自動拆分
+                                if not rng and " " in itm:
+                                    parts = itm.split(" ", 1)
+                                    rng = parts[0]
+                                    itm = parts[1]
+
                                 if 6 <= c <= 12: t_type = "考試本"
                                 elif 13 <= c <= 19: t_type = "口說"
                                 elif 20 <= c <= 26: t_type = "單字"
@@ -728,7 +733,13 @@ class OverviewPage(tk.Frame):
         if idx is not None:
             rec = recs[idx]
         else:
-            rec = {"type": col_key[0], "date": col_key[1], "range": "", "item": col_key[2], "score": "", "retake": "", "std": 90}
+            # 新建時：把 col_key[2]（"range item" 合併字串）正確拆回 range 和 item
+            ri_it = col_key[2]
+            if " " in ri_it:
+                r_range, r_item = ri_it.split(" ", 1)
+            else:
+                r_range, r_item = "", ri_it
+            rec = {"type": col_key[0], "date": col_key[1], "range": r_range, "item": r_item, "score": "", "retake": "", "std": 90}
         
         dlg = tk.Toplevel(self)
         dlg.title(f"快速編輯：{zh}")
@@ -1388,7 +1399,15 @@ class MonthlyInputPage(tk.Frame):
         dt = self._date_var.get().strip()
         rg = self._range_var.get().strip()
         it = self._item_var.get().strip()
-        
+
+        # 自動修正：範圍空白但項目含空格 → 拆成 range/item
+        if not rg and " " in it:
+            parts = it.split(" ", 1)
+            rg = parts[0]
+            it = parts[1]
+            self._range_var.set(rg)
+            self._item_var.set(it)
+
         if not dt or not it:
             messagebox.showwarning("提示", "請填寫日期與項目", parent=self)
             return
@@ -2502,7 +2521,18 @@ class ExportPage(tk.Frame):
         students = dm.class_students(self.app.data, cls)
         book = dm.class_book(self.app.data, cls)
         
-        students_data = [{"stu": stu, "records": dm.monthly_records(self.app.data, cls, stu["zh"], ym)} for stu in students]
+        def _dedup_records(zh):
+            """同一個 (type, date, range, item) 只保留最後一筆，避免輸出重複"""
+            recs_by_key = {}
+            order = []
+            for r in dm.monthly_records(self.app.data, cls, zh, ym):
+                key = (r.get("type",""), r.get("date",""), r.get("range",""), r.get("item",""))
+                if key not in recs_by_key:
+                    order.append(key)
+                recs_by_key[key] = r
+            return [recs_by_key[k] for k in order]
+
+        students_data = [{"stu": stu, "records": _dedup_records(stu["zh"])} for stu in students]
         comments, goals, sig_b64 = self._get_comments_goals_sig(cls, ym)
 
         try:
