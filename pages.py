@@ -588,6 +588,34 @@ class OverviewPage(tk.Frame):
         if not cls: 
             return
 
+        # ── 升級用書詢問：當切換到升級考「之後」的月份且尚未升級，彈出確認視窗 ──
+        if dm.should_prompt_upgrade(self.app.data, cls):
+            lt = dm.latest_leveltest(self.app.data, cls)
+            if lt:
+                lt_ym = lt["date"][:7].replace("/", "-")
+                if ym > lt_ym:
+                    old_book = lt["book"]
+                    new_book = dm.next_book(self.app.data, old_book)
+                    if new_book:
+                        ans = messagebox.askyesno(
+                            "升級用書確認",
+                            f"{cls} 在 {lt_ym} 已完成「{old_book}」升級考。
+
+"
+                            f"是否將 {cls} 的用書改為「{new_book}」？
+"
+                            f"（按「否」可保留現有用書，下次切換到此月份後仍會再次詢問直到確認）",
+                            parent=self
+                        )
+                        if ans:
+                            dm.do_upgrade(self.app.data, cls)
+                            self.app.save()
+                            book = dm.class_book(self.app.data, cls)
+                            self._book_lbl.config(text=f"📚 {book}")
+                            self._book_lbl.pack(side="left", padx=10)
+                            messagebox.showinfo("完成", f"{cls} 用書已更新為「{book}」", parent=self)
+                        # 按「否」：本次不變更，下次查詢同月份以後仍會繼續詢問
+
         students = dm.class_students(self.app.data, cls)
         all_recs = dm.all_monthly_records(self.app.data, cls, ym)
         cols = []
