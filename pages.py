@@ -1,4 +1,4 @@
-VERSION = "2026.05.16"
+VERSION = "2026.05.17"
 
 """
 pages.py — 所有頁面
@@ -2521,18 +2521,45 @@ class ExportPage(tk.Frame):
         students = dm.class_students(self.app.data, cls)
         book = dm.class_book(self.app.data, cls)
         
-        def _dedup_records(zh):
-            """同一個 (type, date, range, item) 只保留最後一筆，避免輸出重複"""
+        # 收集班級所有考試欄位（依出現順序），用於缺考學生補齊空白欄
+        all_cls_recs = dm.all_monthly_records(self.app.data, cls, ym)
+        all_keys_ordered = []
+        seen_keys = set()
+        for zh in dm.student_zh_list(self.app.data, cls):
+            for r in all_cls_recs.get(zh, []):
+                t = r.get("type", "")
+                d = r.get("date", "")
+                ri = r.get("range", "")
+                it = r.get("item", "")
+                if t not in ("考試本", "口說", "單字"):
+                    continue
+                # 跳過 range 和 item 都空白的髒記錄
+                if not ri and not it:
+                    continue
+                key = (t, d, ri, it)
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    all_keys_ordered.append(key)
+
+        def _fill_records(zh):
+            """該生每個 key 取最後一筆；缺考則補空白成績（保留日期/範圍/項目）"""
             recs_by_key = {}
-            order = []
             for r in dm.monthly_records(self.app.data, cls, zh, ym):
                 key = (r.get("type",""), r.get("date",""), r.get("range",""), r.get("item",""))
-                if key not in recs_by_key:
-                    order.append(key)
                 recs_by_key[key] = r
-            return [recs_by_key[k] for k in order]
+            filled = []
+            for key in all_keys_ordered:
+                if key in recs_by_key:
+                    filled.append(recs_by_key[key])
+                else:
+                    filled.append({
+                        "type": key[0], "date": key[1],
+                        "range": key[2], "item": key[3],
+                        "score": "", "retake": "", "std": 90
+                    })
+            return filled
 
-        students_data = [{"stu": stu, "records": _dedup_records(stu["zh"])} for stu in students]
+        students_data = [{"stu": stu, "records": _fill_records(stu["zh"])} for stu in students]
         comments, goals, sig_b64 = self._get_comments_goals_sig(cls, ym)
 
         try:
