@@ -2475,7 +2475,12 @@ class ExportPage(tk.Frame):
             })
 
         base = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).parent
-        tmpl = next((str(p) for p in [base / "升級考模板.docx"] if p.exists()), None)
+        # 發音1 使用專屬的 ph1 模板（只有 3 關），其他書使用通用模板
+        if lt.get("book") == "發音1":
+            tmpl_candidates = [base / "升級考模板_ph1.docx", base / "升級考模板.docx"]
+        else:
+            tmpl_candidates = [base / "升級考模板.docx"]
+        tmpl = next((str(p) for p in tmpl_candidates if p.exists()), None)
 
         ym_from_date = date[:7].replace("/", "-") if "/" in date else date[:7]
         lt_comments = self.app.data.get("lt_comments", {}).get(cls, {}).get(date, {})

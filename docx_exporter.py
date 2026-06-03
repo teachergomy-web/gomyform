@@ -196,7 +196,15 @@ def export_leveltest(filepath_or_folder, cls_name, book_name, date_str,
     # 固定優先用程式資料夾的模板（確保圖片完整）
     base = _get_base()
     tmpl_path = None
-    for name in ['升級考模板.docx', '升級考成績單模板.docx']:
+
+    # 發音1 使用專屬的 ph1 模板（只有 3 關），其他書使用通用模板
+    is_ph1 = (book_name == '發音1')
+    if is_ph1:
+        candidate_names = ['升級考模板_ph1.docx', '升級考模板.docx', '升級考成績單模板.docx']
+    else:
+        candidate_names = ['升級考模板.docx', '升級考成績單模板.docx']
+
+    for name in candidate_names:
         p = base / name
         if p.exists():
             tmpl_path = str(p)
