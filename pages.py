@@ -1,4 +1,4 @@
-VERSION = "2026.05.17"
+VERSION = "1.2.0"
 
 """
 pages.py — 所有頁面
