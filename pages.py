@@ -599,15 +599,13 @@ class OverviewPage(tk.Frame):
                     if new_book:
                         ans = messagebox.askyesno(
                             "升級用書確認",
-                            f"{cls} 在 {lt_ym} 已完成「{old_book}」升級考。
-
-"
-                            f"是否將 {cls} 的用書改為「{new_book}」？
-"
-                            f"（按「否」可保留現有用書，下次切換到此月份後仍會再次詢問直到確認）",
+                            cls + " 在 " + lt_ym + " 已完成 [" + old_book + "] 升級考。\n\n"
+                            + "是否將 " + cls + " 的用書改為 [" + new_book + "] ?\n"
+                            + "(按否可保留現有用書，下次切換到此月份後仍會再次詢問)",
                             parent=self
                         )
                         if ans:
+
                             dm.do_upgrade(self.app.data, cls)
                             self.app.save()
                             book = dm.class_book(self.app.data, cls)
